@@ -133,3 +133,5 @@ dmypy.json
 .deployment
 
 .idea
+
+tmp.py
