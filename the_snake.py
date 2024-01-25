@@ -8,6 +8,7 @@ pygame.init()
 
 # Константы для размеров поля и сетки:
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
+MIDDLE_SCREEN = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
@@ -38,10 +39,10 @@ clock = pygame.time.Clock()
 
 class GameObject():
     position: tuple[int, int]
-    body_color: tuple[int, int, int]
+    body_color: tuple[int, int, int] = None
 
     def __init__(self) -> None:
-        self.position = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        self.position = MIDDLE_SCREEN
 
     def draw(self, surface):
         rect = pygame.Rect(
@@ -64,7 +65,7 @@ class Snake(GameObject):
     next_direction: Optional[tuple[int, int]] = None
 
 
-    def __init__(self, body_color: tuple[int, int, int]) -> None:
+    def __init__(self, body_color: tuple[int, int]=SNAKE_COLOR) -> None:
         super().__init__()
         self.body_color = body_color
         self.positions: list[tuple[int, int]] = [self.position]
@@ -111,6 +112,13 @@ class Snake(GameObject):
         head_snake = (new_x_pos, new_y_pos)
         self.last = self.positions.pop()
         self.positions = [head_snake] + self.positions
+    
+    def reset(self):
+        self.length: int = 1
+        self.direction: tuple[int, int] = RIGHT
+        self.next_direction: Optional[tuple[int, int]] = None
+        self.positions: list[tuple[int, int]] = [MIDDLE_SCREEN]
+        self.last: Optional[tuple[int, int]] = None
 
     def eat_apple(self, apple: GameObject):
         self.positions = [apple.position] + self.positions
@@ -124,7 +132,7 @@ class Snake(GameObject):
   
 
 class Apple(GameObject):
-    def __init__(self, body_color) -> None:
+    def __init__(self, body_color: tuple[int, int]=APPLE_COLOR) -> None:
         super().__init__()
         self.body_color = body_color
         self.randomize_position()
@@ -146,14 +154,17 @@ def handle_keys(game_object: Snake):
                 game_object.next_direction = RIGHT
 
 
-def new_position(apple: Apple, distroyed_apple: Apple, snake: Snake):
+def apple_new_position(apple: Apple, distroyed_apple: Apple, snake: Snake):
     apple_pos = apple.position
     old_pos = distroyed_apple.position
     snake_pos = snake.positions
+    distroyed_apple.position = apple.position
 
     while apple_pos == old_pos or apple_pos in snake_pos:
         apple.randomize_position()
         apple_pos = apple.position
+    
+    distroyed_apple.draw(screen)
 
 
 def quit_game():
@@ -175,18 +186,17 @@ def main():
         screen.fill(BOARD_BACKGROUND_COLOR)
         apple.draw(screen)
         snake.draw(screen)
+        handle_keys(snake)
 
-        if slow == 10:
-            handle_keys(snake)
+        if slow == 5:
             snake.update_direction()
 
             if snake.can_eat(apple):
                 snake.eat_apple(apple)
-                distroyed_apple.position = apple.position
-                new_position(apple, distroyed_apple, snake)
-                distroyed_apple.draw(screen)
+                apple_new_position(apple, distroyed_apple, snake)
             elif snake.can_bite_itself():
-                quit_game()
+                snake.reset()
+                apple_new_position(apple, distroyed_apple, snake)
             else:
                 snake.move()
             
