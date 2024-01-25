@@ -12,15 +12,6 @@ GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
 
-# test = [
-#     (x * GRID_SIZE, y * GRID_SIZE) for x in range(0, 32) for y in range(0, 24)
-# ]
-
-# test = [(600, 400), (620, 400)]
-
-# test.pop()
-# test.pop()
-
 # Направления движения:
 UP = (0, -1)
 DOWN = (0, 1)
@@ -29,14 +20,8 @@ RIGHT = (1, 0)
 
 # Цвет фона - черный:
 BOARD_BACKGROUND_COLOR = (0, 0, 0)
-
-# Цвет границы ячейки
 BORDER_COLOR = (93, 216, 228)
-
-# Цвет яблока
 APPLE_COLOR = (255, 0, 0)
-
-# Цвет змейки
 SNAKE_COLOR = (0, 255, 0)
 
 # Скорость движения змейки:
@@ -44,18 +29,13 @@ SPEED = 20
 
 # Настройка игрового окна:
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
-
-# Заголовок окна игрового поля:
 pygame.display.set_caption('Змейка')
-
-# Заливка заднего фона экрана
 screen.fill(BOARD_BACKGROUND_COLOR)
 
 # Настройка времени:
 clock = pygame.time.Clock()
 
 
-# Тут опишите все классы игры.
 class GameObject():
     position: tuple[int, int]
     body_color: tuple[int, int, int]
@@ -88,7 +68,6 @@ class Snake(GameObject):
         super().__init__()
         self.body_color = body_color
         self.positions: list[tuple[int, int]] = [self.position]
-        # self.positions: list[tuple[int, int]] = test
         self.last: Optional[tuple[int, int]] = None
 
     def update_direction(self):
@@ -119,11 +98,6 @@ class Snake(GameObject):
             pygame.draw.rect(surface, self.body_color, rect)
             pygame.draw.rect(surface, BORDER_COLOR, rect, 1)
 
-        # Отрисовка головы змейки
-        head_rect = pygame.Rect(self.positions[0], (GRID_SIZE, GRID_SIZE))
-        pygame.draw.rect(surface, self.body_color, head_rect)
-        pygame.draw.rect(surface, BORDER_COLOR, head_rect, 1)
-
         # Затирание последнего сегмента
         if self.last:
             last_rect = pygame.Rect(
@@ -134,7 +108,6 @@ class Snake(GameObject):
 
     def move(self):
         new_x_pos, new_y_pos = self.new_x_y_pos()
-
         head_snake = (new_x_pos, new_y_pos)
         self.last = self.positions.pop()
         self.positions = [head_snake] + self.positions
@@ -145,6 +118,9 @@ class Snake(GameObject):
 
     def can_eat(self, apple: GameObject) -> bool:
         return apple.position == self.new_x_y_pos()
+    
+    def can_bite_itself(self) -> bool:
+        return self.new_x_y_pos() in self.positions
   
 
 class Apple(GameObject):
@@ -155,10 +131,10 @@ class Apple(GameObject):
 
 
 def handle_keys(game_object: Snake):
+    keys = pygame.key.get_pressed()
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            raise SystemExit
+        if event.type == pygame.QUIT or keys[pygame.K_ESCAPE]:
+            quit_game()
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP and game_object.direction != DOWN:
                 game_object.next_direction = UP
@@ -180,28 +156,27 @@ def new_position(apple: Apple, distroyed_apple: Apple, snake: Snake):
         apple_pos = apple.position
 
 
+def quit_game():
+    pygame.quit()
+    raise SystemExit
+
+
 def main():
-    # Тут нужно создать экземпляры классов.
     running = True
     slow = 0
     apple = Apple(APPLE_COLOR)
     distroyed_apple = Apple(BOARD_BACKGROUND_COLOR)
     snake = Snake(SNAKE_COLOR)
+
     if apple.position == snake.position:
         apple.randomize_position()
 
     while running:
-        pygame.display.update()
         screen.fill(BOARD_BACKGROUND_COLOR)
         apple.draw(screen)
-        
         snake.draw(screen)
 
         if slow == 10:
-            # distroyed_apple.position = apple.position
-            # new_position(apple, distroyed_apple, snake)
-            # distroyed_apple.draw(screen)
-
             handle_keys(snake)
             snake.update_direction()
 
@@ -209,24 +184,15 @@ def main():
                 snake.eat_apple(apple)
                 distroyed_apple.position = apple.position
                 new_position(apple, distroyed_apple, snake)
-                # distroyed_apple.draw(screen)
+                distroyed_apple.draw(screen)
+            elif snake.can_bite_itself():
+                quit_game()
             else:
                 snake.move()
             
-
-
             slow = 0
         else:
             slow += 1
-
-
-        # for event in pygame.event.get():
-        #     if event.type == pygame.QUIT:
-        #         running = False
-        
-        # handle_keys(snake)
-        # snake.update_direction()
-        # snake.move()
 
         clock.tick(SPEED)
         pygame.display.update()
