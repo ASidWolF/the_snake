@@ -23,6 +23,7 @@ RIGHT = (1, 0)
 BOARD_BACKGROUND_COLOR = (0, 0, 0)
 BORDER_COLOR = (93, 216, 228)
 APPLE_COLOR = (255, 0, 0)
+BAD_APPLE_COLOR = (255, 100, 55)
 SNAKE_COLOR = (0, 255, 0)
 
 # Скорость движения змейки:
@@ -39,9 +40,9 @@ clock = pygame.time.Clock()
 
 class GameObject():
     position: tuple[int, int]
-    body_color: tuple[int, int, int] = None
+    body_color: Optional[tuple[int, int, int]] = None
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.position = MIDDLE_SCREEN
 
     def draw(self, surface):
@@ -64,8 +65,7 @@ class Snake(GameObject):
     direction: tuple[int, int] = RIGHT
     next_direction: Optional[tuple[int, int]] = None
 
-
-    def __init__(self, body_color: tuple[int, int]=SNAKE_COLOR) -> None:
+    def __init__(self, body_color: tuple[int, int, int] = SNAKE_COLOR):
         super().__init__()
         self.body_color = body_color
         self.positions: list[tuple[int, int]] = [self.position]
@@ -78,17 +78,18 @@ class Snake(GameObject):
 
     def get_head_position(self) -> tuple[int, int]:
         return self.positions[0]
-    
+
     def new_x_y_pos(self) -> tuple[int, int]:
-        new_x_pos = self.positions[0][0] + self.direction[0] * GRID_SIZE
-        new_y_pos = self.positions[0][1] + self.direction[1] * GRID_SIZE
+        new_x_pos, new_y_pos = self.get_head_position()
+        new_x_pos = new_x_pos + self.direction[0] * GRID_SIZE
+        new_y_pos = new_y_pos + self.direction[1] * GRID_SIZE
 
         if new_x_pos < 0 or new_x_pos == SCREEN_WIDTH:
             new_x_pos = SCREEN_WIDTH - new_x_pos * self.direction[0]
 
         if new_y_pos < 0 or new_y_pos == SCREEN_HEIGHT:
             new_y_pos = SCREEN_HEIGHT - new_y_pos * self.direction[1]
-        
+
         return (new_x_pos, new_y_pos)
 
     def draw(self, surface):
@@ -112,58 +113,59 @@ class Snake(GameObject):
         head_snake = (new_x_pos, new_y_pos)
         self.last = self.positions.pop()
         self.positions = [head_snake] + self.positions
-    
-    def reset(self):
-        self.length: int = 1
-        self.direction: tuple[int, int] = RIGHT
-        self.next_direction: Optional[tuple[int, int]] = None
-        self.positions: list[tuple[int, int]] = [MIDDLE_SCREEN]
-        self.last: Optional[tuple[int, int]] = None
 
-    def eat_apple(self, apple: GameObject):
+    def reset(self):
+        self.length = 1
+        self.direction = RIGHT
+        self.next_direction = None
+        self.positions = [MIDDLE_SCREEN]
+        self.last = None
+
+    def eat(self, apple: GameObject):
         self.positions = [apple.position] + self.positions
         self.draw(screen)
 
     def can_eat(self, apple: GameObject) -> bool:
         return apple.position == self.new_x_y_pos()
-    
+
     def can_bite_itself(self) -> bool:
         return self.new_x_y_pos() in self.positions
-  
+
 
 class Apple(GameObject):
-    def __init__(self, body_color: tuple[int, int]=APPLE_COLOR) -> None:
+    def __init__(self, body_color: tuple[int, int, int] = APPLE_COLOR,
+                 is_good_apple: bool = True):
         super().__init__()
         self.body_color = body_color
         self.randomize_position()
+        self.is_good_apple = is_good_apple
 
 
-def handle_keys(game_object: Snake):
+def handle_keys(game_obj: Snake):
     keys = pygame.key.get_pressed()
     for event in pygame.event.get():
         if event.type == pygame.QUIT or keys[pygame.K_ESCAPE]:
             quit_game()
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP and game_object.direction != DOWN:
-                game_object.next_direction = UP
-            elif event.key == pygame.K_DOWN and game_object.direction != UP:
-                game_object.next_direction = DOWN
-            elif event.key == pygame.K_LEFT and game_object.direction != RIGHT:
-                game_object.next_direction = LEFT
-            elif event.key == pygame.K_RIGHT and game_object.direction != LEFT:
-                game_object.next_direction = RIGHT
+            if event.key == pygame.K_UP and game_obj.direction != DOWN:
+                game_obj.next_direction = UP
+            elif event.key == pygame.K_DOWN and game_obj.direction != UP:
+                game_obj.next_direction = DOWN
+            elif event.key == pygame.K_LEFT and game_obj.direction != RIGHT:
+                game_obj.next_direction = LEFT
+            elif event.key == pygame.K_RIGHT and game_obj.direction != LEFT:
+                game_obj.next_direction = RIGHT
 
 
-def apple_new_position(apple: Apple, distroyed_apple: Apple, snake: Snake):
-    apple_pos = apple.position
-    old_pos = distroyed_apple.position
+def apple_new_position(apple: Apple, distroyed_apple: Apple,
+                       snake: Snake, obstacles_pos: list[tuple[int, int]]
+                       ) -> None:
     snake_pos = snake.positions
     distroyed_apple.position = apple.position
 
-    while apple_pos == old_pos or apple_pos in snake_pos:
+    while (apple.position in snake_pos or apple.position in obstacles_pos):
         apple.randomize_position()
-        apple_pos = apple.position
-    
+
     distroyed_apple.draw(screen)
 
 
@@ -172,35 +174,68 @@ def quit_game():
     raise SystemExit
 
 
+# def update_obstacles_position(obstacles: list[GameObject]
+#                               ) -> list[tuple[int, int]]:
+#     return [obstacle.position for obstacle in obstacles]
+
+
+def set_uniques_positions(obstacles: list[GameObject],
+                          snake_position: tuple[int, int]):
+    obstacles_pos = [obstacle.position for obstacle in obstacles]
+    new_obstacles_pos = []
+
+    for obstacle in obstacles:
+        while (obstacle.position == snake_position
+               or obstacle.position in obstacles_pos
+               or obstacle.position in new_obstacles_pos):
+            obstacle.randomize_position()
+
+        new_obstacles_pos += [obstacle.position]
+
+
 def main():
     running = True
     slow = 0
-    apple = Apple(APPLE_COLOR)
-    distroyed_apple = Apple(BOARD_BACKGROUND_COLOR)
-    snake = Snake(SNAKE_COLOR)
+    move = True
 
-    if apple.position == snake.position:
-        apple.randomize_position()
+    snake = Snake()
+    good_apple = Apple()
+    bad_apple = Apple(BAD_APPLE_COLOR, False)
+    distroyed_apple = Apple(BOARD_BACKGROUND_COLOR)
+    obstacles = [good_apple, bad_apple]
+    set_uniques_positions(obstacles, snake.position)
 
     while running:
+        move = True
         screen.fill(BOARD_BACKGROUND_COLOR)
-        apple.draw(screen)
         snake.draw(screen)
+        obstacles_pos = []
+        for obstacle in obstacles:
+            obstacles_pos += [obstacle.position]
+            obstacle.draw(screen)
+
         handle_keys(snake)
 
         if slow == 5:
-            snake.update_direction()
-
-            if snake.can_eat(apple):
-                snake.eat_apple(apple)
-                apple_new_position(apple, distroyed_apple, snake)
-            elif snake.can_bite_itself():
-                snake.reset()
-                apple_new_position(apple, distroyed_apple, snake)
-            else:
-                snake.move()
-            
             slow = 0
+            snake.update_direction()
+            for this in obstacles:
+                if snake.can_eat(this):
+                    snake.eat(this)
+                    apple_new_position(this, distroyed_apple,
+                                       snake, obstacles_pos)
+                    move = False
+                    break
+
+            if snake.can_bite_itself():
+                snake.reset()
+                set_uniques_positions(obstacles, snake.position)
+                move = False
+                continue
+
+            if move:
+                snake.move()
+
         else:
             slow += 1
 
