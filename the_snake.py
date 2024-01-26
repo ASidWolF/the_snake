@@ -157,7 +157,7 @@ def handle_keys(game_obj: Snake):
                 game_obj.next_direction = RIGHT
 
 
-def apple_new_position(apple: Apple, distroyed_apple: Apple,
+def set_apple_new_position(apple: Apple, distroyed_apple: Apple,
                        snake: Snake, obstacles_pos: list[tuple[int, int]]
                        ) -> None:
     snake_pos = snake.positions
@@ -172,11 +172,6 @@ def apple_new_position(apple: Apple, distroyed_apple: Apple,
 def quit_game():
     pygame.quit()
     raise SystemExit
-
-
-# def update_obstacles_position(obstacles: list[GameObject]
-#                               ) -> list[tuple[int, int]]:
-#     return [obstacle.position for obstacle in obstacles]
 
 
 def set_uniques_positions(obstacles: list[GameObject],
@@ -222,8 +217,8 @@ def main():
             for this in obstacles:
                 if snake.can_eat(this):
                     snake.eat(this)
-                    apple_new_position(this, distroyed_apple,
-                                       snake, obstacles_pos)
+                    set_apple_new_position(this, distroyed_apple,
+                                           snake, obstacles_pos)
                     move = False
                     break
 
