@@ -28,6 +28,9 @@ SNAKE_COLOR = (0, 255, 0)
 
 # Скорость движения змейки:
 SPEED = 20
+DEFAULT_COUNT_APPLES = 1
+DEFAULT_COUNT_BAD_APPLES = 1
+DEFAULT_COUNT_ROCKS = 0
 
 # Настройка игрового окна:
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -122,8 +125,14 @@ class Snake(GameObject):
         self.last = None
 
     def eat(self, apple: GameObject):
-        self.positions = [apple.position] + self.positions
-        self.draw(screen)
+        if apple.is_good_apple:
+            self.positions = [apple.position] + self.positions
+        elif self.length > 1:
+            self.positions.pop()
+            
+        self.length = len(self.positions)
+        
+        
 
     def can_eat(self, apple: GameObject) -> bool:
         return apple.position == self.new_x_y_pos()
@@ -157,26 +166,26 @@ def handle_keys(game_obj: Snake):
                 game_obj.next_direction = RIGHT
 
 
-def set_apple_new_position(apple: Apple, distroyed_apple: Apple,
-                       snake: Snake, obstacles_pos: list[tuple[int, int]]
-                       ) -> None:
-    snake_pos = snake.positions
-    distroyed_apple.position = apple.position
-
-    while (apple.position in snake_pos or apple.position in obstacles_pos):
-        apple.randomize_position()
-
-    distroyed_apple.draw(screen)
-
-
 def quit_game():
     pygame.quit()
     raise SystemExit
 
 
+def get_good_apples(count: int) -> list:
+    return [Apple() for _ in range(0, count)]
+
+
+def get_bad_apples(count: int) -> list:
+    return [Apple(BAD_APPLE_COLOR, False) for _ in range(0, count)]
+
+
+def get_obstacles_position(obstacles: list[GameObject]) -> list:
+    return [obstacle.position for obstacle in obstacles]
+
+
 def set_uniques_positions(obstacles: list[GameObject],
                           snake_position: tuple[int, int]):
-    obstacles_pos = [obstacle.position for obstacle in obstacles]
+    obstacles_pos = get_obstacles_position(obstacles)
     new_obstacles_pos = []
 
     for obstacle in obstacles:
@@ -188,25 +197,35 @@ def set_uniques_positions(obstacles: list[GameObject],
         new_obstacles_pos += [obstacle.position]
 
 
+def set_this_new_position(apple: Apple, distroyed_apple: Apple,
+                       snake: Snake, obstacles) -> None:
+    obstacles_pos = get_obstacles_position(obstacles)
+    snake_pos = snake.positions
+    distroyed_apple.position = apple.position
+
+    while (apple.position in snake_pos or apple.position in obstacles_pos):
+        apple.randomize_position()
+
+    distroyed_apple.draw(screen)
+
+
 def main():
     running = True
     slow = 0
     move = True
 
     snake = Snake()
-    good_apple = Apple()
-    bad_apple = Apple(BAD_APPLE_COLOR, False)
     distroyed_apple = Apple(BOARD_BACKGROUND_COLOR)
-    obstacles = [good_apple, bad_apple]
+    good_apples = get_good_apples(DEFAULT_COUNT_APPLES)
+    bad_apples = get_bad_apples(DEFAULT_COUNT_BAD_APPLES)
+    obstacles = good_apples + bad_apples
     set_uniques_positions(obstacles, snake.position)
 
     while running:
         move = True
         screen.fill(BOARD_BACKGROUND_COLOR)
         snake.draw(screen)
-        obstacles_pos = []
         for obstacle in obstacles:
-            obstacles_pos += [obstacle.position]
             obstacle.draw(screen)
 
         handle_keys(snake)
@@ -214,19 +233,20 @@ def main():
         if slow == 5:
             slow = 0
             snake.update_direction()
-            for this in obstacles:
-                if snake.can_eat(this):
-                    snake.eat(this)
-                    set_apple_new_position(this, distroyed_apple,
-                                           snake, obstacles_pos)
-                    move = False
-                    break
 
             if snake.can_bite_itself():
                 snake.reset()
                 set_uniques_positions(obstacles, snake.position)
                 move = False
                 continue
+
+            for this in obstacles:
+                if snake.can_eat(this):
+                    snake.eat(this)
+                    set_this_new_position(this, distroyed_apple,
+                                           snake, obstacles)
+                    move = False
+                    break
 
             if move:
                 snake.move()
