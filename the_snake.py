@@ -27,7 +27,8 @@ BAD_APPLE_COLOR = (255, 100, 55)
 SNAKE_COLOR = (0, 255, 0)
 
 # Скорость движения змейки:
-SPEED = 20
+GAME_SPEED = 20
+SNAKE_SPEED = 5
 DEFAULT_COUNT_APPLES = 1
 DEFAULT_COUNT_BAD_APPLES = 1
 DEFAULT_COUNT_ROCKS = 0
@@ -39,6 +40,23 @@ screen.fill(BOARD_BACKGROUND_COLOR)
 
 # Настройка времени:
 clock = pygame.time.Clock()
+
+
+class GameManager():
+    def __init__(self):
+        self.is_run = True
+        self.move = True
+        self.__slow_count = SNAKE_SPEED
+
+    def run(self) -> bool:
+        return self.is_run
+    
+    def slow_mode(self) -> bool:
+        self.__slow_count -= 1
+        if self.__slow_count < 1:
+            self.__slow_count = SNAKE_SPEED
+        
+        return self.__slow_count == SNAKE_SPEED
 
 
 class GameObject():
@@ -210,10 +228,7 @@ def set_this_new_position(apple: Apple, distroyed_apple: Apple,
 
 
 def main():
-    running = True
-    slow = 0
-    move = True
-
+    game = GameManager()
     snake = Snake()
     distroyed_apple = Apple(BOARD_BACKGROUND_COLOR)
     good_apples = get_good_apples(DEFAULT_COUNT_APPLES)
@@ -221,7 +236,7 @@ def main():
     obstacles = good_apples + bad_apples
     set_uniques_positions(obstacles, snake.position)
 
-    while running:
+    while game.run():
         move = True
         screen.fill(BOARD_BACKGROUND_COLOR)
         snake.draw(screen)
@@ -230,8 +245,7 @@ def main():
 
         handle_keys(snake)
 
-        if slow == 5:
-            slow = 0
+        if game.slow_mode():
             snake.update_direction()
 
             if snake.can_bite_itself():
@@ -251,10 +265,7 @@ def main():
             if move:
                 snake.move()
 
-        else:
-            slow += 1
-
-        clock.tick(SPEED)
+        clock.tick(GAME_SPEED)
         pygame.display.update()
 
     pygame.quit()
