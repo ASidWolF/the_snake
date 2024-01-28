@@ -1,4 +1,4 @@
-from random import choice, randint
+from random import randint
 from typing import Optional
 
 import pygame
@@ -25,6 +25,7 @@ BORDER_COLOR = (93, 216, 228)
 APPLE_COLOR = (255, 0, 0)
 BAD_APPLE_COLOR = (255, 100, 55)
 SNAKE_COLOR = (0, 255, 0)
+DEFAULT_COLOR = (0, 0, 0)
 
 # Скорость движения змейки:
 GAME_SPEED = 20
@@ -43,6 +44,7 @@ clock = pygame.time.Clock()
 
 
 class GameManager():
+
     def __init__(self):
         self.is_run = True
         self.move = True
@@ -50,21 +52,20 @@ class GameManager():
 
     def run(self) -> bool:
         return self.is_run
-    
+
     def slow_mode(self) -> bool:
         self.__slow_count -= 1
         if self.__slow_count < 1:
             self.__slow_count = SNAKE_SPEED
-        
+
         return self.__slow_count == SNAKE_SPEED
 
 
 class GameObject():
-    position: tuple[int, int]
-    body_color: Optional[tuple[int, int, int]] = None
 
-    def __init__(self):
+    def __init__(self, body_color=DEFAULT_COLOR):
         self.position = MIDDLE_SCREEN
+        self.body_color = body_color
 
     def draw(self, surface):
         rect = pygame.Rect(
@@ -81,16 +82,23 @@ class GameObject():
         )
 
 
-class Snake(GameObject):
-    length: int = 1
-    direction: tuple[int, int] = RIGHT
-    next_direction: Optional[tuple[int, int]] = None
+class Apple(GameObject):
 
-    def __init__(self, body_color: tuple[int, int, int] = SNAKE_COLOR):
-        super().__init__()
-        self.body_color = body_color
-        self.positions: list[tuple[int, int]] = [self.position]
-        self.last: Optional[tuple[int, int]] = None
+    def __init__(self, body_color=APPLE_COLOR, is_good_apple=True):
+        super().__init__(body_color)
+        self.randomize_position()
+        self.is_good_apple = is_good_apple
+
+
+class Snake(GameObject):
+    next_direction: Optional[tuple[int, int]] = None
+    last: Optional[tuple[int, int]] = None
+
+    def __init__(self, body_color=SNAKE_COLOR):
+        super().__init__(body_color)
+        self.positions = [self.position]
+        self.length = 1
+        self.direction = RIGHT
 
     def update_direction(self):
         if self.next_direction:
@@ -142,30 +150,19 @@ class Snake(GameObject):
         self.positions = [MIDDLE_SCREEN]
         self.last = None
 
-    def eat(self, apple: GameObject):
+    def eat(self, apple: Apple):
         if apple.is_good_apple:
             self.positions = [apple.position] + self.positions
         elif self.length > 1:
             self.positions.pop()
-            
-        self.length = len(self.positions)
-        
-        
 
-    def can_eat(self, apple: GameObject) -> bool:
-        return apple.position == self.new_x_y_pos()
+        self.length = len(self.positions)
+
+    def can_eat(self, this: GameObject) -> bool:
+        return this.position == self.new_x_y_pos()
 
     def can_bite_itself(self) -> bool:
         return self.new_x_y_pos() in self.positions
-
-
-class Apple(GameObject):
-    def __init__(self, body_color: tuple[int, int, int] = APPLE_COLOR,
-                 is_good_apple: bool = True):
-        super().__init__()
-        self.body_color = body_color
-        self.randomize_position()
-        self.is_good_apple = is_good_apple
 
 
 def handle_keys(game_obj: Snake):
@@ -216,7 +213,7 @@ def set_uniques_positions(obstacles: list[GameObject],
 
 
 def set_this_new_position(apple: Apple, distroyed_apple: Apple,
-                       snake: Snake, obstacles) -> None:
+                          snake: Snake, obstacles) -> None:
     obstacles_pos = get_obstacles_position(obstacles)
     snake_pos = snake.positions
     distroyed_apple.position = apple.position
@@ -258,7 +255,7 @@ def main():
                 if snake.can_eat(this):
                     snake.eat(this)
                     set_this_new_position(this, distroyed_apple,
-                                           snake, obstacles)
+                                          snake, obstacles)
                     move = False
                     break
 
