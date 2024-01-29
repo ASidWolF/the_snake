@@ -12,6 +12,7 @@ MIDDLE_SCREEN = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
+FIELD_SIZE = GRID_WIDTH * GRID_HEIGHT
 
 # Направления движения:
 UP = (0, -1)
@@ -30,35 +31,19 @@ DEFAULT_COLOR = (0, 0, 0)
 # Скорость движения змейки:
 GAME_SPEED = 20
 SNAKE_SPEED = 5
-DEFAULT_COUNT_APPLES = 1
-DEFAULT_COUNT_BAD_APPLES = 1
+DEFAULT_COUNT_APPLES = 100
+DEFAULT_COUNT_BAD_APPLES = 20
 DEFAULT_COUNT_ROCKS = 0
 
 # Настройка игрового окна:
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
-pygame.display.set_caption('Змейка')
+# pygame.display.set_caption('Змейка')
 screen.fill(BOARD_BACKGROUND_COLOR)
+game_caption = pygame.display.set_caption
+game_caption('Змейка')
 
 # Настройка времени:
 clock = pygame.time.Clock()
-
-
-class GameManager():
-
-    def __init__(self):
-        self.is_run = True
-        self.move = True
-        self.__slow_count = SNAKE_SPEED
-
-    def run(self) -> bool:
-        return self.is_run
-
-    def slow_mode(self) -> bool:
-        self.__slow_count -= 1
-        if self.__slow_count < 1:
-            self.__slow_count = SNAKE_SPEED
-
-        return self.__slow_count == SNAKE_SPEED
 
 
 class GameObject():
@@ -165,6 +150,27 @@ class Snake(GameObject):
         return self.new_x_y_pos() in self.positions
 
 
+class GameManager():
+
+    def __init__(self):
+        self.is_run = True
+        self.move = True
+        self.__slow_count = SNAKE_SPEED
+
+    def run(self) -> bool:
+        return self.is_run
+
+    def slow_mode(self) -> bool:
+        self.__slow_count -= 1
+        if self.__slow_count < 1:
+            self.__slow_count = SNAKE_SPEED
+
+        return self.__slow_count == SNAKE_SPEED
+
+    def start_game(self):
+        pass
+
+
 def handle_keys(game_obj: Snake):
     keys = pygame.key.get_pressed()
     for event in pygame.event.get():
@@ -200,12 +206,12 @@ def get_obstacles_position(obstacles: list[GameObject]) -> list:
 
 def set_uniques_positions(obstacles: list[GameObject],
                           snake_position: tuple[int, int]):
-    obstacles_pos = get_obstacles_position(obstacles)
+    # obstacles_pos = get_obstacles_position(obstacles)
     new_obstacles_pos = []
 
     for obstacle in obstacles:
+        obstacle.randomize_position()
         while (obstacle.position == snake_position
-               or obstacle.position in obstacles_pos
                or obstacle.position in new_obstacles_pos):
             obstacle.randomize_position()
 
@@ -222,6 +228,28 @@ def set_this_new_position(apple: Apple, distroyed_apple: Apple,
         apple.randomize_position()
 
     distroyed_apple.draw(screen)
+
+
+def check_collision(snake: Snake, obstacles, distroyed_apple) -> bool:
+    if snake.can_bite_itself():
+        snake.reset()
+        set_uniques_positions(obstacles, snake.position)
+        return False
+
+    for this in obstacles:
+        if snake.can_eat(this):
+            snake.eat(this)
+
+            if snake.length + len(obstacles) <= FIELD_SIZE:
+                set_this_new_position(this, distroyed_apple,
+                                      snake, obstacles)
+            else:
+                snake.reset()
+                set_uniques_positions(obstacles, snake.position)
+
+            return False
+
+    return True
 
 
 def main():
@@ -244,25 +272,14 @@ def main():
 
         if game.slow_mode():
             snake.update_direction()
-
-            if snake.can_bite_itself():
-                snake.reset()
-                set_uniques_positions(obstacles, snake.position)
-                move = False
-                continue
-
-            for this in obstacles:
-                if snake.can_eat(this):
-                    snake.eat(this)
-                    set_this_new_position(this, distroyed_apple,
-                                          snake, obstacles)
-                    move = False
-                    break
+            move = check_collision(snake, obstacles, distroyed_apple)
 
             if move:
                 snake.move()
 
         clock.tick(GAME_SPEED)
+        free_cell = FIELD_SIZE - snake.length - len(obstacles)
+        game_caption(f'{snake.length = },  {free_cell = }, {FIELD_SIZE = }')
         pygame.display.update()
 
     pygame.quit()
