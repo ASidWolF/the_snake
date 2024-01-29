@@ -21,24 +21,44 @@ LEFT = (-1, 0)
 RIGHT = (1, 0)
 
 # Цвет фона - черный:
-BOARD_BACKGROUND_COLOR = (0, 0, 0)
+BACKGROUND_COLOR = (176, 128, 83)
 BORDER_COLOR = (93, 216, 228)
 APPLE_COLOR = (255, 0, 0)
 BAD_APPLE_COLOR = (255, 100, 55)
 SNAKE_COLOR = (0, 255, 0)
+STONE_COLOR = (77, 55, 41)
 DEFAULT_COLOR = (0, 0, 0)
+NOISE_SIZE = 5
 
 # Скорость движения змейки:
 GAME_SPEED = 20
 SNAKE_SPEED = 5
-DEFAULT_COUNT_APPLES = 100
-DEFAULT_COUNT_BAD_APPLES = 20
-DEFAULT_COUNT_ROCKS = 0
+DEFAULT_COUNT_APPLES = 10
+DEFAULT_COUNT_BAD_APPLES = 5
+DEFAULT_COUNT_STONES = 5
 
 # Настройка игрового окна:
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
-# pygame.display.set_caption('Змейка')
-screen.fill(BOARD_BACKGROUND_COLOR)
+
+# Создание поверхности для фона
+background_surface = pygame.Surface((640, 480))
+
+# Заполнение поверхности цветом песка
+background_surface.fill(BACKGROUND_COLOR)
+for i in range(0, 640, NOISE_SIZE):
+    for j in range(0, 480, NOISE_SIZE):
+        rnd_r = randint(BACKGROUND_COLOR[0] - 2, BACKGROUND_COLOR[0] + 2)
+        rnd_g = randint(BACKGROUND_COLOR[1] - 2, BACKGROUND_COLOR[1] + 2)
+        rnd_b = randint(BACKGROUND_COLOR[2] - 2, BACKGROUND_COLOR[2] + 2)
+        pygame.draw.rect(
+            background_surface,
+            (rnd_r, rnd_g, rnd_b),
+            (i, j, NOISE_SIZE, NOISE_SIZE)
+        )
+
+# Отрисовка поверхности на экране
+screen.blit(background_surface, (0, 0))
+
 game_caption = pygame.display.set_caption
 game_caption('Змейка')
 
@@ -73,6 +93,13 @@ class Apple(GameObject):
         super().__init__(body_color)
         self.randomize_position()
         self.is_good_apple = is_good_apple
+
+
+class Stone(GameObject):
+
+    def __init__(self, body_color=STONE_COLOR):
+        super().__init__(body_color)
+        self.randomize_position()
 
 
 class Snake(GameObject):
@@ -120,7 +147,7 @@ class Snake(GameObject):
                 (self.last[0], self.last[1]),
                 (GRID_SIZE, GRID_SIZE)
             )
-            pygame.draw.rect(surface, BOARD_BACKGROUND_COLOR, last_rect)
+            pygame.draw.rect(surface, BACKGROUND_COLOR, last_rect)
 
     def move(self):
         new_x_pos, new_y_pos = self.new_x_y_pos()
@@ -143,18 +170,17 @@ class Snake(GameObject):
 
         self.length = len(self.positions)
 
-    def can_eat(self, this: GameObject) -> bool:
-        return this.position == self.new_x_y_pos()
-
     def can_bite_itself(self) -> bool:
         return self.new_x_y_pos() in self.positions
+
+    def try_bite(self, this: GameObject) -> bool:
+        return this.position == self.new_x_y_pos()
 
 
 class GameManager():
 
     def __init__(self):
         self.is_run = True
-        self.move = True
         self.__slow_count = SNAKE_SPEED
 
     def run(self) -> bool:
@@ -196,6 +222,10 @@ def get_good_apples(count: int) -> list:
     return [Apple() for _ in range(0, count)]
 
 
+def get_stones(count: int) -> list:
+    return [Stone() for _ in range(0, count)]
+
+
 def get_bad_apples(count: int) -> list:
     return [Apple(BAD_APPLE_COLOR, False) for _ in range(0, count)]
 
@@ -206,7 +236,6 @@ def get_obstacles_position(obstacles: list[GameObject]) -> list:
 
 def set_uniques_positions(obstacles: list[GameObject],
                           snake_position: tuple[int, int]):
-    # obstacles_pos = get_obstacles_position(obstacles)
     new_obstacles_pos = []
 
     for obstacle in obstacles:
@@ -231,22 +260,28 @@ def set_this_new_position(apple: Apple, distroyed_apple: Apple,
 
 
 def check_collision(snake: Snake, obstacles, distroyed_apple) -> bool:
+    reset = False
+
     if snake.can_bite_itself():
-        snake.reset()
-        set_uniques_positions(obstacles, snake.position)
-        return False
+        reset = True
 
     for this in obstacles:
-        if snake.can_eat(this):
+        if snake.try_bite(this) and type(this) is Apple:
             snake.eat(this)
 
             if snake.length + len(obstacles) <= FIELD_SIZE:
                 set_this_new_position(this, distroyed_apple,
                                       snake, obstacles)
+                return False
             else:
-                snake.reset()
-                set_uniques_positions(obstacles, snake.position)
+                reset = True
 
+        elif snake.try_bite(this) and type(this) is Stone:
+            reset = True
+
+        if reset:
+            snake.reset()
+            set_uniques_positions(obstacles, snake.position)
             return False
 
     return True
@@ -255,15 +290,16 @@ def check_collision(snake: Snake, obstacles, distroyed_apple) -> bool:
 def main():
     game = GameManager()
     snake = Snake()
-    distroyed_apple = Apple(BOARD_BACKGROUND_COLOR)
+    distroyed_apple = Apple(BACKGROUND_COLOR)
     good_apples = get_good_apples(DEFAULT_COUNT_APPLES)
     bad_apples = get_bad_apples(DEFAULT_COUNT_BAD_APPLES)
-    obstacles = good_apples + bad_apples
+    stones = get_stones(DEFAULT_COUNT_STONES)
+    obstacles = good_apples + bad_apples + stones
     set_uniques_positions(obstacles, snake.position)
 
     while game.run():
         move = True
-        screen.fill(BOARD_BACKGROUND_COLOR)
+        screen.blit(background_surface, (0, 0))
         snake.draw(screen)
         for obstacle in obstacles:
             obstacle.draw(screen)
