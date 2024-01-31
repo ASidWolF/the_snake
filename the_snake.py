@@ -4,7 +4,7 @@ from typing import Optional
 import pygame
 
 pygame.init()
-
+"""Настройки экрана и игорового поля."""
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 MIDDLE_SCREEN = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 GRID_SIZE = 20
@@ -12,53 +12,52 @@ GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
 FIELD_SIZE = GRID_WIDTH * GRID_HEIGHT
 NOISE_SIZE = 5
-
+NOISE_STRENGTH = 4
+"""Направления движения змейки."""
 UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
-
-BOARD_BACKGROUND_COLOR = (176, 128, 83)
+"""Цвета объектов и игрового поля."""
+BOARD_BACKGROUND_COLOR = (181, 130, 81)
 BORDER_COLOR = (93, 216, 228)
 APPLE_COLOR = (255, 0, 0)
 BAD_APPLE_COLOR = (255, 100, 55)
 SNAKE_COLOR = (0, 255, 0)
 STONE_COLOR = (77, 55, 41)
 DEFAULT_COLOR = (0, 0, 0)
-
+"""Управление скорость и замедлением игры."""
 GAME_SPEED = 20
 SLOW_SPEED = 5
+"""Количество игровых объектов наполе."""
 DEFAULT_COUNT_APPLES = 10
 DEFAULT_COUNT_BAD_APPLES = 5
 DEFAULT_COUNT_STONES = 5
-
+"""Основной эран игры."""
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
-
+"""Оюъект в котором будет хранится фон для игры."""
 background_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-
+"""Создание фона и шума для эмитации сложной поверхности (например песка)."""
 background_surface.fill(BOARD_BACKGROUND_COLOR)
 for i in range(0, SCREEN_WIDTH, NOISE_SIZE):
     for j in range(0, SCREEN_HEIGHT, NOISE_SIZE):
-        rnd_r = randint(
-            BOARD_BACKGROUND_COLOR[0] - 2, BOARD_BACKGROUND_COLOR[0] + 2
-        )
-        rnd_g = randint(
-            BOARD_BACKGROUND_COLOR[1] - 2, BOARD_BACKGROUND_COLOR[1] + 2
-        )
-        rnd_b = randint(
-            BOARD_BACKGROUND_COLOR[2] - 2, BOARD_BACKGROUND_COLOR[2] + 2
-        )
+        rnd_rgb = [0, 0, 0]
+        for k in range(3):
+            rnd_rgb[k] = randint(
+                BOARD_BACKGROUND_COLOR[k] - NOISE_STRENGTH,
+                BOARD_BACKGROUND_COLOR[k] + NOISE_STRENGTH
+            )
         pygame.draw.rect(
             background_surface,
-            (rnd_r, rnd_g, rnd_b),
+            (rnd_rgb[0], rnd_rgb[1], rnd_rgb[2]),
             (i, j, NOISE_SIZE, NOISE_SIZE)
         )
-
+"""Отрисовка фона на экране"""
 screen.blit(background_surface, (0, 0))
-
+"""Создаем объект для управления заголовком игры."""
 game_caption = pygame.display.set_caption
 game_caption('Змейка')
-
+"""Объект для управления временем."""
 clock = pygame.time.Clock()
 
 
@@ -80,13 +79,13 @@ class GameObject():
 
     def __init__(self,
                  body_color: tuple[int, int, int] = DEFAULT_COLOR) -> None:
-        """Инициализирует новый экземпляр класса GameObject."""
+        """Инициализирует новый экземпляр класса {GameObject}."""
         self.position: tuple[int, int] = MIDDLE_SCREEN
         self.body_color = body_color
 
     def draw(self, surface) -> None:
-        """Отрисовывает на поверхности (surface) фигуру
-        заданных, константой GRID_SIZE, размеров.
+        """Отрисовывает на поверхности {surface} фигуру
+        заданных, константой {GRID_SIZE}, размеров.
         """
         rect = pygame.Rect(
             (self.position[0], self.position[1]),
@@ -105,19 +104,19 @@ class GameObject():
 
 class Apple(GameObject):
     """Класс описывающий игровой объект Яблоко.
-    Наследуется от GameObject, обладает одним дополнительным параметром:
+    Наследуется от {GameObject}, обладает одним дополнительным параметром:
 
         {is_good_apple} : bool
             Параметр отвечающий за игровую логику 'хорошее/плохое яблоко'.
-            Если True - размер 'Змейки' при взаимодействии увеличится.
-            Если False - размер 'Змейки' при взаимодействии уменьшится.
+            Если {True} - размер 'Змейки' при взаимодействии увеличится.
+            Если {False} - размер 'Змейки' при взаимодействии уменьшится.
     """
 
     def __init__(self,
                  body_color: tuple[int, int, int] = APPLE_COLOR,
                  is_good_apple: bool = True) -> None:
-        """Инициализирует экземпляр класса Apple, наследуясь от GameObject.
-        И задает ему случайные координаты.
+        """Инициализирует экземпляр класса {Apple} и задает ему
+        случайные координаты. Наследуясь от {GameObject}.
         """
         super().__init__(body_color)
         self.randomize_position()
@@ -125,14 +124,14 @@ class Apple(GameObject):
 
 
 class Stone(GameObject):
-    """Класс описывающий игровой объект Камень. Наследуется от GameObject.
+    """Класс описывающий игровой объект Камень. Наследуется от {GameObject}.
     При столкновении с камнем 'Змейка' принимает исходное состояние.
     """
 
     def __init__(self,
                  body_color: tuple[int, int, int] = STONE_COLOR) -> None:
-        """Инициализирует экземпляр класса Stone, наследуясь от GameObject.
-        И задает ему случайные координаты.
+        """Инициализирует экземпляр класса {Stone} и задает ему случайные
+        координаты. Наследуется от {GameObject}.
         """
         super().__init__(body_color)
         self.randomize_position()
@@ -140,7 +139,7 @@ class Stone(GameObject):
 
 class Snake(GameObject):
     """Класс описывающий игровой объект 'Змейка'.
-    Наследуется от GameObject. Содержит:
+    Наследуется от {GameObject}. Содержит:
 
     Атрибуты:
         {positions} : list
@@ -152,7 +151,7 @@ class Snake(GameObject):
             Направление движения змейки. По умолчанию змейка движется вправо.
         {next_direction} : Optional[tuple[int, int]]
             Следующее направление движения, которое будет применено после
-            обработки нажатия клавиши. По умолчанию None.
+            обработки нажатия клавиши. По умолчанию {None}.
         {last} : Optional[tuple[int, int]]
             Используется для хранения позиции последнего сегмента змейки
             перед тем, как он исчезнет (при движении змейки).
@@ -161,7 +160,7 @@ class Snake(GameObject):
             Обновляет направление движения змейки.
         { get_head_position() } -> tuple[int, int]
             Возвращает позицию головы змейки (первый элемент в
-            списке positions).
+            списке {positions}).
         { new_x_y_pos() } -> tuple[int, int]:
             Возвращает позицию в которую будет перемещена змейка
             исходя из направления движения.
@@ -169,14 +168,14 @@ class Snake(GameObject):
             Принимает на вход поверхность на которой отрисовывает
             змейку, затирая след.
         { move() } -> None
-            Расчитывает координаты новой головы методом new_x_y_pos() и
+            Расчитывает координаты новой головы методом { new_x_y_pos() } и
             добовляет к ней 'тело змейки' удалив из него крайний элемент.
         { reset() } -> None
             Сбрасывает змейку в начальное состояние после столкновения с собой
             или несъедобным препятствием.
         { eat(apple: Apple) } -> None
-            Принимает на вход объект класса Apple и в зависимости от его
-            атрибута is_good_apple либо увеличивается либо уменьшается.
+            Принимает на вход объект класса {Apple} и в зависимости от его
+            атрибута {is_good_apple} либо увеличивается либо уменьшается.
         { can_bite_itself() } -> bool
             Проверяет может ли следующим ходом змейка укусить сама себя.
         { try_bite(this: GameObject) } -> bool
@@ -185,8 +184,8 @@ class Snake(GameObject):
 
     def __init__(self,
                  body_color: tuple[int, int, int] = SNAKE_COLOR) -> None:
-        """Инициализирует экземпляр класса Snake, наследуясь от GameObject.
-        И записывает стартовую позицию в список positions.
+        """Инициализирует экземпляр класса {Snake}, и записывает стартовую
+        позицию в список {positions}. Наследуясь от {GameObject}.
         """
         super().__init__(body_color)
         self.positions = [self.position]
@@ -220,9 +219,9 @@ class Snake(GameObject):
         return (new_x_pos, new_y_pos)
 
     def draw(self, surface) -> None:
-        """Отрисовывает на поверхности (surface) змейку заданных списком
-        positions размеров, где константа GRID_SIZE размер сегмента. И
-        и если last содержит координаты старого сегмента затирает его.
+        """Отрисовывает на поверхности {surface} змейку заданных списком
+        {positions} размеров, где константа {GRID_SIZE} размер сегмента. И
+        и если {last} содержит координаты старого сегмента затирает его.
         """
         for position in self.positions:
             rect = (
@@ -239,10 +238,7 @@ class Snake(GameObject):
             pygame.draw.rect(surface, BOARD_BACKGROUND_COLOR, last_rect)
 
     def move(self) -> None:
-        """Расчитывает координаты новой головы методом new_x_y_pos() и
-        добовляет к ней 'тело змейки' удалив из него крайний элемент
-        создавая эффект движения
-        """
+        """Сдвигает змейку на одну клетку игрового поля."""
         new_x_pos, new_y_pos = self.new_x_y_pos()
         head_snake = (new_x_pos, new_y_pos)
         self.last = self.positions.pop()
@@ -253,8 +249,8 @@ class Snake(GameObject):
         Snake.__init__(self)
 
     def eat(self, apple: Apple) -> None:
-        """Принимает на вход объект класса Apple и в зависимости от его
-        атрибута is_good_apple либо увеличивается либо уменьшается.
+        """Принимает на вход объект класса {Apple} и в зависимости от его
+        атрибута {is_good_apple} увеличивает или уменьшает змейку.
         """
         if apple.is_good_apple:
             self.positions = [apple.position] + self.positions
@@ -276,33 +272,54 @@ class GameManager():
     """Класс для управления общей логикой игры. Содержит:
 
     Атрибуты:
-        {is_run} : bool
-            Отвечает за управление главным циклом в main()
+        {__game_is_run} : bool
+            Содержит в себе статус игру (включено/выключено)
+            в виде True / False
         {__slow_count} : int
-            Приватный атрибут для релизации выборочного замедления
-            объектов, за уровень замедления отвечает SLOW_SPEED.
+            Счетчик для работы метода { slow_mode() }.
+    Методы:
+        { is_run() } -> bool
+            Возвращает статус игры (включено/выключено)
+        { game_switch_on() } -> None
+            Переключает положение игры в состояние - включено.
+        { game_switch_off() } -> None
+            Переключает положение игры в состояние - выключено.
+        { slow_mode() } -> bool
+            Возвращает False пока действует замедление для выбранного
+            блока кода, и True в момент когда код должен быть выполнен.
+            Работает на протяжении всего игрового цикла.
     """
 
     def __init__(self) -> None:
         """Инициализирует экземпляр класса
         и базовые атрибуты.
         """
-        self.is_run: bool = True
-        self.__slow_count: int = SLOW_SPEED
+        self.__game_is_run: bool = True
+        self.__slow_count: int = 0
 
-    def run(self) -> bool:
-        """Возвращяет значение True False"""
-        return self.is_run
+    def is_run(self) -> bool:
+        """Возвращяет True если игра включена и False если нет."""
+        return self.__game_is_run
 
-    def slow_mode(self) -> bool:
+    def game_switch_on(self) -> None:
+        """Переключатель игры в положение - включено."""
+        self.__game_is_run = True
+
+    def game_switch_off(self) -> None:
+        """Переключатель игры в положение - выключено."""
+        self.__game_is_run = False
+
+    def slow_mode(self, how_slow: int = SLOW_SPEED) -> bool:
         """Замедляет часть игровой логики.
-        Степень замедления определяется константой SLOW_SPEED
+        Степень замедления, по умолчанию, определяется константой
+        {SLOW_SPEED}, но может быть переопределена в игре. Чем больше
+        значение {how_slow}, тем сильнее замедление.
         """
-        self.__slow_count -= 1
-        if self.__slow_count < 1:
-            self.__slow_count = SLOW_SPEED
+        self.__slow_count += 1
+        if self.__slow_count > how_slow:
+            self.__slow_count = 0
 
-        return self.__slow_count == SLOW_SPEED
+        return self.__slow_count == how_slow
 
     def start_game(self):
         """Находится в разработке"""
@@ -311,7 +328,7 @@ class GameManager():
 
 def handle_keys(game_obj: Snake) -> None:
     """Отслеживает нажатые клавиши для управления змейкой
-    или выхода из игры.
+    или выходом из игры.
     """
     keys = pygame.key.get_pressed()
     for event in pygame.event.get():
@@ -358,7 +375,7 @@ def get_obstacles_position(obstacles: list[GameObject]) -> list:
 
 def set_uniques_positions(obstacles: list[GameObject],
                           snake_position: tuple[int, int]) -> None:
-    """Задает все объектам из списка obstacles уникальные координаты."""
+    """Задает всем объектам из списка {obstacles} уникальные координаты."""
     new_obstacles_pos: list = []
 
     for obstacle in obstacles:
@@ -387,8 +404,8 @@ def set_this_new_position(apple: Apple, distroyed_apple: Apple,
 
 
 def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
-    """Проверяет есть ли на пути препятствия. Если нет то возвращает True
-    и змейка двигается дальше. Если есть препятствие, возвращется False.
+    """Проверяет есть ли на пути препятствия. Если нет то возвращает {True}
+    и змейка двигается дальше. Если есть препятствие, возвращется {False}.
     В зависимости от препятсвия змейка вырастет, уменьшится или сбросится
     в начальное состояние.
     """
@@ -431,7 +448,7 @@ def main():
     obstacles = good_apples + bad_apples + stones
     set_uniques_positions(obstacles, snake.position)
 
-    while game.run():
+    while game.is_run():
         screen.blit(background_surface, (0, 0))
         snake.draw(screen)
         for obstacle in obstacles:
