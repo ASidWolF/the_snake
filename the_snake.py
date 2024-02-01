@@ -1,5 +1,6 @@
 from random import randint
 from typing import Optional
+from time import time
 
 import pygame
 
@@ -72,7 +73,7 @@ class GameObject():
 
     Методы:
         { draw(self, surface) } -> None
-            Отрисовывает объект на выбранной поверхност (surface).
+            Отрисовывает объект на выбранной поверхност {surface}.
         { randomize_position(self) } -> None
             Задаёт случайные координата для объекта.
     """
@@ -116,7 +117,7 @@ class Apple(GameObject):
                  body_color: tuple[int, int, int] = APPLE_COLOR,
                  is_good_apple: bool = True) -> None:
         """Инициализирует экземпляр класса {Apple} и задает ему
-        случайные координаты. Наследуясь от {GameObject}.
+        случайные координаты. Наследуется от {GameObject}.
         """
         super().__init__(body_color)
         self.randomize_position()
@@ -273,10 +274,20 @@ class GameManager():
 
     Атрибуты:
         {__game_is_run} : bool
-            Содержит в себе статус игру (включено/выключено)
+            Содержит в себе статус игры (включено/выключено)
             в виде True / False
         {__slow_count} : int
             Счетчик для работы метода { slow_mode() }.
+        {__snake_length}: int
+            Хранит длину змейки.
+        {__snake_speed}: float
+            Хранит скорость змейки (измеряется в клетках в минуту)
+        {__start_time}: Optional[float]
+            Переменная для расчета скорости в методе { update_snake_speed() }
+        {__eaten_apples}: int
+            Хранит количество съеденных яблок за всю игру.
+        {__reset_count}: int
+            Хранит количество столкновений за всю игру.
     Методы:
         { is_run() } -> bool
             Возвращает статус игры (включено/выключено)
@@ -285,9 +296,21 @@ class GameManager():
         { game_switch_off() } -> None
             Переключает положение игры в состояние - выключено.
         { slow_mode() } -> bool
-            Возвращает False пока действует замедление для выбранного
-            блока кода, и True в момент когда код должен быть выполнен.
-            Работает на протяжении всего игрового цикла.
+            Возвращает {False} пока действует замедление для выбранного
+            блока кода, и {True} в момент когда код должен быть выполнен.
+            Работает по принципу пропуска кадров, количество пропущенных
+            кадров определяется константой {SLOW_SPEED}.
+        { update_snake_speed(self, end_time: float) } -> None
+            Вычесляет сколько клеток за минут пройдет змейка. И записывет
+            результат в переменную {__snake_speed}.
+        { update_eaten_apples(self) } -> None
+            При каждом вызове увеличиывет значение {__eaten_apples} на 1.
+        { update_reset_count(self) } -> None
+            При каждом вызове увеличиывет значение {__reset_count} на 1.
+        { update_snake_length(self, length: int) } -> None
+            При каждом вызове обновляет значение переменной {__snake_length}.
+        { info() } -> str:
+            Выводит информацию об игре.
     """
 
     def __init__(self) -> None:
@@ -296,9 +319,14 @@ class GameManager():
         """
         self.__game_is_run: bool = True
         self.__slow_count: int = 0
+        self.__snake_length: int = 1
+        self.__snake_speed: float = 0
+        self.__start_time: Optional[float] = None
+        self.__eaten_apples: int = 0
+        self.__reset_count: int = 0
 
     def is_run(self) -> bool:
-        """Возвращяет True если игра включена и False если нет."""
+        """Возвращяет {True} если игра включена и {False} если нет."""
         return self.__game_is_run
 
     def game_switch_on(self) -> None:
@@ -310,20 +338,50 @@ class GameManager():
         self.__game_is_run = False
 
     def slow_mode(self, how_slow: int = SLOW_SPEED) -> bool:
-        """Замедляет часть игровой логики.
-        Степень замедления, по умолчанию, определяется константой
-        {SLOW_SPEED}, но может быть переопределена в игре. Чем больше
-        значение {how_slow}, тем сильнее замедление.
+        """Возвращает {False} пока действует замедление для выбранного
+        блока кода, и {True} в момент когда код должен быть выполнен.
+        Работает по принципу пропуска кадров, количество пропущенных
+        кадров по умолчанию = {SLOW_SPEED}. Чем больше значение
+        тем сильнее замедление.
         """
         self.__slow_count += 1
         if self.__slow_count > how_slow:
             self.__slow_count = 0
 
         return self.__slow_count == how_slow
+    
+    def update_snake_speed(self, end_time: float) -> None:
+        """Обновляет скорость движения змейки."""
+        if self.__start_time:
+            self.__snake_speed = round(60 / (end_time - self.__start_time))
+        
+        self.__start_time = end_time
+    
+    def update_eaten_apples(self) -> None:
+        """Обновляет количество съеденных яблок."""
+        self.__eaten_apples += 1
+    
+    def update_reset_count(self) -> None:
+        """Обновляет количество врезаний в препятствие."""
+        self.__reset_count += 1
+    
+    def update_snake_length(self, length: int) -> None:
+        """Обновляет значение длины зъмейки."""
+        self.__snake_length = length
+    
+    def info(self) -> str:
+        """Выводит информацию об игре."""
+        info = (
+            f'Длина змейки: {self.__snake_length} || '
+            f'Яблок съедено: {self.__eaten_apples} || '
+            f'Врезаний: {self.__reset_count} || ' 
+            f'Скорость {self.__snake_speed} клеток в минуту!'
+        )
+        return info
 
-    def start_game(self):
-        """Находится в разработке"""
-        pass
+
+"""Инициализируем для возможнисти управлять всей логикой."""
+game = GameManager()
 
 
 def handle_keys(game_obj: Snake) -> None:
@@ -346,7 +404,7 @@ def handle_keys(game_obj: Snake) -> None:
 
 
 def quit_game() -> None:
-    """Завершает игру"""
+    """Завершает игру."""
     pygame.quit()
     raise SystemExit
 
@@ -418,6 +476,8 @@ def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
 
         if snake.try_bite(this) and type(this) is Apple:
             snake.eat(this)
+            game.update_snake_length(snake.length)
+            game.update_eaten_apples()
 
             if snake.length + len(obstacles) <= FIELD_SIZE:
                 set_this_new_position(this, distroyed_apple,
@@ -431,6 +491,8 @@ def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
 
         if reset:
             snake.reset()
+            game.update_snake_length(snake.length)
+            game.update_reset_count()
             set_uniques_positions(obstacles, snake.position)
             return False
 
@@ -439,7 +501,6 @@ def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
 
 def main():
     """Реализует базовую логику игры и инициализацию всех объектов."""
-    game = GameManager()
     snake = Snake()
     distroyed_apple = Apple(DEFAULT_COLOR)
     good_apples = get_good_apples()
@@ -456,15 +517,16 @@ def main():
 
         handle_keys(snake)
 
-        if game.slow_mode():
+        if game.slow_mode(5):
             snake.update_direction()
 
             if snake_can_move(snake, obstacles, distroyed_apple):
                 snake.move()
+            
+            game.update_snake_speed(time())
 
         clock.tick(GAME_SPEED)
-        free_cell = FIELD_SIZE - snake.length - len(obstacles)
-        game_caption(f'{snake.length = },  {free_cell = }, {FIELD_SIZE = }')
+        game_caption(game.info())
         pygame.display.update()
 
     quit_game()
