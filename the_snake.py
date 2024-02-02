@@ -5,8 +5,9 @@ from time import time
 import pygame
 
 pygame.init()
-"""Настройки экрана и игорового поля."""
+"""Настройки экрана, игорового поля и меню."""
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
+MENU_WIDTH, MENU_HEIGHT = 200, 200
 MIDDLE_SCREEN = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
@@ -22,10 +23,12 @@ RIGHT = (1, 0)
 """Цвета объектов и игрового поля."""
 BOARD_BACKGROUND_COLOR = (181, 130, 81)
 BORDER_COLOR = (93, 216, 228)
+MAIN_MENU_COLOR = (200, 200, 200)
+MENU_BORDER_COLOR = (25, 25, 25)
 APPLE_COLOR = (255, 0, 0)
 BAD_APPLE_COLOR = (255, 100, 55)
 SNAKE_COLOR = (0, 255, 0)
-STONE_COLOR = (77, 55, 41)
+STONE_COLOR = (107, 99, 92)
 DEFAULT_COLOR = (0, 0, 0)
 """Управление скорость и замедлением игры."""
 GAME_SPEED = 20
@@ -36,6 +39,10 @@ DEFAULT_COUNT_BAD_APPLES = 5
 DEFAULT_COUNT_STONES = 5
 """Основной эран игры."""
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
+"""Меню игры."""
+main_menu = pygame.Surface((MENU_WIDTH, MENU_HEIGHT))
+main_menu_rect = main_menu.get_rect()
+main_menu_rect.center = MIDDLE_SCREEN
 """Оюъект в котором будет хранится фон для игры."""
 background_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 """Создание фона и шума для эмитации сложной поверхности (например песка)."""
@@ -58,6 +65,8 @@ screen.blit(background_surface, (0, 0))
 """Создаем объект для управления заголовком игры."""
 game_caption = pygame.display.set_caption
 game_caption('Змейка')
+"""Создаем объект текст."""
+font = pygame.font.Font(None, 30)
 """Объект для управления временем."""
 clock = pygame.time.Clock()
 
@@ -295,6 +304,8 @@ class GameManager():
             Переключает положение игры в состояние - включено.
         { game_switch_off() } -> None
             Переключает положение игры в состояние - выключено.
+        { menu_is_open() } -> bool
+            Отображает статус меню (активно / не активно).
         { slow_mode() } -> bool
             Возвращает {False} пока действует замедление для выбранного
             блока кода, и {True} в момент когда код должен быть выполнен.
@@ -317,6 +328,8 @@ class GameManager():
         """Инициализирует экземпляр класса
         и базовые атрибуты.
         """
+        self.reset: bool = False
+        self.new_game: bool = True
         self.__game_is_run: bool = True
         self.__slow_count: int = 0
         self.__snake_length: int = 1
@@ -324,18 +337,54 @@ class GameManager():
         self.__start_time: Optional[float] = None
         self.__eaten_apples: int = 0
         self.__reset_count: int = 0
+        self.__status_menu: bool = True
+        self.__menu_value: int = 0
+        self.__menu_sections: list = [
+            'Новая игра',
+            'Продолжить',
+            'Выход'
+        ]
 
     def is_run(self) -> bool:
         """Возвращяет {True} если игра включена и {False} если нет."""
         return self.__game_is_run
 
-    def game_switch_on(self) -> None:
+    def switch_on(self) -> None:
         """Переключатель игры в положение - включено."""
         self.__game_is_run = True
 
-    def game_switch_off(self) -> None:
+    def switch_off(self) -> None:
         """Переключатель игры в положение - выключено."""
         self.__game_is_run = False
+
+    def menu_is_open(self) -> bool:
+        """Отображает статус меню (активно / не активно)."""
+        return self.__status_menu
+
+    def close_menu(self) -> None:
+        self.__status_menu = False
+
+    def open_menu(self) -> None:
+        self.__status_menu = True
+
+    def menu_up(self) -> None:
+        self.__menu_value -= 1 if self.__menu_value > 0 else 0
+
+    def menu_down(self) -> None:
+        x = len(self.__menu_sections) - 1
+        if self.__menu_value < x:
+            self.__menu_value += 1
+        else:
+            self.__menu_value = x
+
+    def menu_title(self) -> str:
+        return self.__menu_sections[self.__menu_value]
+
+    def get_menu_step(self) -> int:
+        return (MENU_HEIGHT // (len(self.__menu_sections) + 1))
+
+    def get_menu_list(self) -> list:
+        return self.__menu_sections
 
     def slow_mode(self, how_slow: int = SLOW_SPEED) -> bool:
         """Возвращает {False} пока действует замедление для выбранного
@@ -349,32 +398,37 @@ class GameManager():
             self.__slow_count = 0
 
         return self.__slow_count == how_slow
-    
+
     def update_snake_speed(self, end_time: float) -> None:
         """Обновляет скорость движения змейки."""
         if self.__start_time:
             self.__snake_speed = round(60 / (end_time - self.__start_time))
-        
+
         self.__start_time = end_time
-    
+
     def update_eaten_apples(self) -> None:
         """Обновляет количество съеденных яблок."""
         self.__eaten_apples += 1
-    
-    def update_reset_count(self) -> None:
+
+    def update_count_of_resets(self) -> None:
         """Обновляет количество врезаний в препятствие."""
         self.__reset_count += 1
-    
+
     def update_snake_length(self, length: int) -> None:
         """Обновляет значение длины зъмейки."""
         self.__snake_length = length
-    
+
+    def reset_info(self) -> None:
+        self.__snake_length = 1
+        self.__eaten_apples = 0
+        self.__reset_count = 0
+
     def info(self) -> str:
         """Выводит информацию об игре."""
         info = (
             f'Длина змейки: {self.__snake_length} || '
             f'Яблок съедено: {self.__eaten_apples} || '
-            f'Врезаний: {self.__reset_count} || ' 
+            f'Врезаний: {self.__reset_count} || '
             f'Скорость {self.__snake_speed} клеток в минуту!'
         )
         return info
@@ -385,28 +439,56 @@ game = GameManager()
 
 
 def handle_keys(game_obj: Snake) -> None:
-    """Отслеживает нажатые клавиши для управления змейкой
-    или выходом из игры.
-    """
+    """Отслеживает нажатые клавиши для управления змейкой"""
     keys = pygame.key.get_pressed()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT or keys[pygame.K_ESCAPE]:
-            quit_game()
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP and game_obj.direction != DOWN:
-                game_obj.next_direction = UP
-            elif event.key == pygame.K_DOWN and game_obj.direction != UP:
-                game_obj.next_direction = DOWN
-            elif event.key == pygame.K_LEFT and game_obj.direction != RIGHT:
-                game_obj.next_direction = LEFT
-            elif event.key == pygame.K_RIGHT and game_obj.direction != LEFT:
-                game_obj.next_direction = RIGHT
+    if keys[pygame.K_UP] and game_obj.direction != DOWN:
+        game_obj.next_direction = UP
+    elif keys[pygame.K_DOWN] and game_obj.direction != UP:
+        game_obj.next_direction = DOWN
+    elif keys[pygame.K_LEFT] and game_obj.direction != RIGHT:
+        game_obj.next_direction = LEFT
+    elif keys[pygame.K_RIGHT] and game_obj.direction != LEFT:
+        game_obj.next_direction = RIGHT
+
+
+def handle_keys_menu() -> None:
+    """Отслеживает нажатые клавиши для управления в меню"""
+    keys = pygame.key.get_pressed()
+
+    if keys[13] and game.menu_title() == 'Новая игра':
+        if game.new_game:
+            game.new_game = False
+        else:
+            game.reset = True
+        game.close_menu()
+    elif keys[13] and game.menu_title() == 'Продолжить' and not game.new_game:
+        game.close_menu()
+    elif keys[13] and game.menu_title() == 'Выход':
+        game.switch_off()
+        game.close_menu()
+
+    elif game.slow_mode(1):
+        if keys[pygame.K_UP]:
+            game.menu_up()
+        elif keys[pygame.K_DOWN]:
+            game.menu_down()
 
 
 def quit_game() -> None:
     """Завершает игру."""
     pygame.quit()
     raise SystemExit
+
+def quit_pressed() -> bool:
+    keys = pygame.key.get_pressed()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT or keys[pygame.K_ESCAPE]:
+            if game.new_game:
+                game.switch_off()
+            else:
+                return True
+
+    return False
 
 
 def get_good_apples(count: int = DEFAULT_COUNT_APPLES) -> list:
@@ -461,16 +543,27 @@ def set_this_new_position(apple: Apple, distroyed_apple: Apple,
     distroyed_apple.draw(screen)
 
 
+def reset_game(snake: Snake, obstacles: list[GameObject],
+               new_game: bool = False) -> None:
+    snake.reset()
+    set_uniques_positions(obstacles, snake.position)
+
+    if new_game:
+        game.reset_info()
+    else:
+        game.update_snake_length(snake.length)
+        game.update_count_of_resets()
+
+
 def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
     """Проверяет есть ли на пути препятствия. Если нет то возвращает {True}
     и змейка двигается дальше. Если есть препятствие, возвращется {False}.
     В зависимости от препятсвия змейка вырастет, уменьшится или сбросится
     в начальное состояние.
     """
-    reset: bool = False
 
     if snake.can_bite_itself():
-        reset = True
+        game.reset = True
 
     for this in obstacles:
 
@@ -484,19 +577,40 @@ def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
                                       snake, obstacles)
                 return False
             else:
-                reset = True
+                game.reset = True
 
         elif snake.try_bite(this) and type(this) is Stone:
-            reset = True
+            game.reset = True
 
-        if reset:
-            snake.reset()
-            game.update_snake_length(snake.length)
-            game.update_reset_count()
-            set_uniques_positions(obstacles, snake.position)
+        if game.reset:
+            reset_game(snake, obstacles)
+            game.reset = False
             return False
 
     return True
+
+
+def draw_menu():
+    main_menu.fill(MAIN_MENU_COLOR)
+    rect = (0, 0, MENU_WIDTH, MENU_HEIGHT)
+    step = game.get_menu_step()
+
+    pygame.draw.rect(main_menu, MENU_BORDER_COLOR, rect, 4)
+    y_tmp = step
+
+    for item in game.get_menu_list():
+        text = font.render(item, True, 'Black')
+        text_rect = text.get_rect()
+        text_rect.center = (MENU_WIDTH // 2, y_tmp)
+        main_menu.blit(text, text_rect)
+
+        if game.menu_title() == item:
+            text_rect.inflate_ip(15, 15)
+            pygame.draw.rect(main_menu, SNAKE_COLOR, text_rect, 5)
+
+        y_tmp += step
+
+    screen.blit(main_menu, main_menu_rect)
 
 
 def main():
@@ -511,22 +625,38 @@ def main():
 
     while game.is_run():
         screen.blit(background_surface, (0, 0))
-        snake.draw(screen)
-        for obstacle in obstacles:
-            obstacle.draw(screen)
 
-        handle_keys(snake)
+        if game.menu_is_open():
+            game_caption('Змейка || Основное меню')
+            if quit_pressed():
+                game.close_menu()
 
-        if game.slow_mode(5):
-            snake.update_direction()
+            draw_menu()
+            handle_keys_menu()
+            if game.reset:
+                reset_game(snake, obstacles, True)
+                game.reset = False
+        else:
+            if quit_pressed():
+                game.open_menu()
 
-            if snake_can_move(snake, obstacles, distroyed_apple):
-                snake.move()
-            
-            game.update_snake_speed(time())
+            snake.draw(screen)
+            for obstacle in obstacles:
+                obstacle.draw(screen)
+
+            handle_keys(snake)
+
+            if game.slow_mode():
+                snake.update_direction()
+
+                if snake_can_move(snake, obstacles, distroyed_apple):
+                    snake.move()
+
+                game.update_snake_speed(time())
+
+            game_caption(game.info())
 
         clock.tick(GAME_SPEED)
-        game_caption(game.info())
         pygame.display.update()
 
     quit_game()
