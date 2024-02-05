@@ -1,54 +1,61 @@
-"""                              Игра змейка.
+"""Игра змейка.
 Суть игры:
-    Игрок управляет змейкой, которая движется по игровому полю, разделённому на клетки.
+    - Игрок управляет змейкой, которая движется по игровому полю, разделённому
+    на клетки.
 Цель игры:
-    Увеличивать длину змейки, 'съедая' появляющиеся на экране яблоки и избегать плохих яблок и камней.
+    - Увеличивать длину змейки, 'съедая' хорошие яблоки и избегать камней.
 Правила игры:
-    - Змейка движется в одном из четырёх направлений — вверх, вниз, влево или вправо.
-    - Игрок управляет направлением движения, но змейка не может остановиться или двигаться назад.
-    - Каждый раз, когда змейка съедает яблоко, она увеличивается в длину на один сегмент.
-    - Змейка может проходить сквозь одну стену и появляться с противоположной стороны поля.
+    - Змейка движется в одном из направлений - вверх, вниз, влево или вправо.
+    - Игрок управляет направлением движения, но змейка не может остановиться
+    или двигаться назад.
+    - Каждый раз, когда змейка съедает яблоко, она увеличивается в длину на
+    один сегмент.
+    - Змейка может проходить сквозь одну стену и появляться с противоположной
+    стороны поля.
     - Если змейка съест 'плохое яблоко' - змейка уменьшится на 1 сегмент.
-    - Если змейка столкнётся сама с собой или с камнем — змейка уменьшится до 1 сегмента игра начнется заново.
+    - Если змейка столкнётся сама с собой или с камнем — змейка уменьшится
+    до 1 сегмента игра начнется заново.
 Реализация игры:
-    Игра реализована с помощью библиотеки { pygame }.
-    В игре реализовано 'игровое меню' позволяющее: начать 'Новую игру', 'Продолжить' текущюю или 'Выйти' из игры.
-    Все настройки игры (включая количество игровых объектов) осуществляются через блок констант. 
-    В игре реализованны:
-        Классы:
-            {GameObject} - базовый класс описывающий все объекты в игре включая змейку.
-            {Apple} и {Stone} - наследуются от {GameObject} и описывают объекты яблоко и камень.
-            {Snake} - наследуются от {GameObject} и описывает змейку.
-            {GameManger} - класс нужный для управления основной логикой игры.
-        Методы:
-            { handle_keys }
-                Отслеживает нажатые клавиши для управления змейкой.
-            { handle_keys_menu }
-                Отслеживает нажатые клавиши для управления в меню.
-            { quit_game }
-                Завершает игру.
-            { quit_pressed }
-                Реализует логику нажатия на клавишу ESCAPE в игре.
-            { get_good_apples }
-                Создает список хороших яблок. И возвращает его.
-            { get_stones }
-                Создает список хороших камней. И возвращает его.
-            { get_bad_apples }
-                Создает список хороших плохих яблок. И возвращает его.
-            { get_obstacles_position }
-                Возвращает список состоящий из координат всех объектов за исключением змейки.
-            { set_uniques_positions }
-                Задает всем объектам, кроме змейки, уникальные координаты.
-            { set_this_new_position }
-                Задает новые координаты съеденому яблоку.
-            { reset_game }
-                Сбрасывает игру. Все объекты возвращаются к стартовым значениям.
-            { snake_can_move }
-                Реализует логику движения змейки и встречи её с препятствиями.
-            { draw_menu }
-                Отрисовывает стартовое игровое меню.
-            { main }
-                Содержит главный игровой цикл. Реализует основную логику игры.
+    - Игра реализована с помощью библиотеки { pygame }.
+    - В игре реализовано 'игровое меню' позволяющее: начать 'Новую игру',
+    'Продолжить' текущюю или 'Выйти' из игры.
+    - Все настройки игры осуществляются через блок констант.
+В игре реализованны:
+    Классы:
+        {GameObject} - базовый класс описывающий все объекты в игре.
+        {Apple} - наследуются от {GameObject} и описывают объект яблоко.
+        {Stone} - наследуются от {GameObject} и описывают объект камень.
+        {Snake} - наследуются от {GameObject} и описывает змейку.
+        {GameManger} - класс нужный для управления основной логикой игры.
+    Методы:
+        { handle_keys }
+            Отслеживает нажатые клавиши для управления змейкой.
+        { handle_keys_menu }
+            Отслеживает нажатые клавиши для управления в меню.
+        { quit_game }
+            Завершает игру.
+        { quit_pressed }
+            Реализует логику нажатия на клавишу ESCAPE в игре.
+        { get_good_apples }
+            Создает список хороших яблок. И возвращает его.
+        { get_stones }
+            Создает список хороших камней. И возвращает его.
+        { get_bad_apples }
+            Создает список хороших плохих яблок. И возвращает его.
+        { get_obstacles_position }
+            Возвращает список из координат всех объектов за исключением змейки.
+        { set_uniques_positions }
+            Задает всем объектам, кроме змейки, уникальные координаты.
+        { set_this_new_position }
+            Задает новые координаты съеденому яблоку.
+        { reset_game }
+            Сбрасывает игру. Все объекты возвращаются к стартовым значениям.
+        { snake_can_move }
+            Реализует логику движения змейки и встречи её с препятствиями.
+        { draw_menu }
+            Отрисовывает стартовое игровое меню.
+        { main }
+            Содержит главный игровой цикл. Реализует основную логику игры.
 """
 from random import choice, randint
 from typing import Optional
@@ -60,9 +67,11 @@ pygame.init()
 """Настройки экрана, игорового поля и меню."""
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 MENU_WIDTH, MENU_HEIGHT = 200, 200
+TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT = MENU_WIDTH, 50
 MIDDLE_SCREEN = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 GRID_SIZE = 20
-FONT_SIZE = 35
+MENU_FONT_SIZE = 35
+TITLE_FONT_SIZE = 60
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
 FIELD_SIZE = GRID_WIDTH * GRID_HEIGHT
@@ -85,7 +94,7 @@ STONE_COLOR = (107, 99, 92)
 DEFAULT_COLOR = (0, 0, 0)
 """Управление скорость и замедлением игры."""
 GAME_SPEED = 20
-SLOW_SPEED = 5
+SLOW_SPEED = 3
 """Количество игровых объектов на поле."""
 DEFAULT_COUNT_APPLES = 10
 DEFAULT_COUNT_BAD_APPLES = 5
@@ -97,6 +106,11 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 """Меню игры."""
 main_menu = pygame.Surface((MENU_WIDTH, MENU_HEIGHT))
 main_menu_rect = main_menu.get_rect(center=MIDDLE_SCREEN)
+"""    """
+title_menu = pygame.Surface((TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT))
+title_menu_rect = main_menu.get_rect(
+    center=(SCREEN_WIDTH // 2, main_menu_rect.y + TITLE_MENU_HEIGHT)
+)
 """Оюъект в котором будет хранится фон для игры."""
 background_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 """Создание фона и шума для эмитации сложной поверхности (например песка)."""
@@ -120,7 +134,8 @@ screen.blit(background_surface, (0, 0))
 game_caption = pygame.display.set_caption
 game_caption('Змейка')
 """Создаем объект текст."""
-font = pygame.font.Font(None, FONT_SIZE)
+menu_font = pygame.font.Font(None, MENU_FONT_SIZE)
+title_font = pygame.font.Font(None, TITLE_FONT_SIZE)
 """Объект для управления временем."""
 clock = pygame.time.Clock()
 
@@ -389,8 +404,6 @@ class GameManager():
         { slow_mode() } -> bool
             Возвращает {False} пока действует замедление для выбранного
             блока кода, и {True} в момент когда код должен быть выполнен.
-            Работает по принципу пропуска кадров, количество пропущенных
-            кадров определяется константой {SLOW_SPEED}.
         { update_snake_speed(self, end_time: float) } -> None
             Вычесляет сколько клеток за минут пройдет змейка. И записывет
             результат в переменную {__snake_speed}.
@@ -412,7 +425,7 @@ class GameManager():
         """
         self.reset: bool = False
         self.new_game: bool = True
-        self.__game_is_run: Optional[bool]
+        self.__game_is_run: bool = False
         self.__slow_count: int = 0
         self.__snake_length: int = 1
         self.__snake_speed: float = 0
@@ -559,7 +572,7 @@ def handle_keys_menu() -> None:
     elif keys[KEY_ENTER] and game.menu_title() == 'Выход':
         game.switch_off()
         game.close_menu()
-    
+
     if game.slow_mode(1):
         if keys[pygame.K_UP]:
             game.menu_up()
@@ -574,11 +587,7 @@ def quit_game() -> None:
 
 
 def quit_pressed() -> bool:
-    """Реализует логику нажатия на клавишу ESCAPE и закрытия окна игры
-    в ручную. При первом запуске и нажатии ESCAPE игра будет завершена,
-    в дальнейшем при нажатии будет возвращено значение {True}. Если
-    нажатия небыло вернет {False}.
-    """
+    """Реализует логику нажатия на клавишу ESCAPE."""
     keys = pygame.key.get_pressed()
     for event in pygame.event.get():
         if event.type == pygame.QUIT or keys[pygame.K_ESCAPE]:
@@ -665,7 +674,6 @@ def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
     В зависимости от препятсвия змейка вырастет, уменьшится или сбросится
     в начальное состояние.
     """
-
     if snake.can_bite_itself():
         game.reset = True
 
@@ -696,6 +704,12 @@ def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
 
 def draw_menu():
     """Отрисовывает главное меню."""
+    title_menu.fill('Black')
+    text = title_font.render('Змейка', True, 'White')
+    txt_x, txt_y = TITLE_MENU_WIDTH // 2, TITLE_MENU_HEIGHT // 2
+    text_rect = text.get_rect(center=(txt_x, txt_y))
+    title_menu.blit(text, text_rect)
+
     main_menu.fill(MAIN_MENU_COLOR)
     rect = (0, 0, MENU_WIDTH, MENU_HEIGHT)
     step = game.get_menu_step()
@@ -705,21 +719,21 @@ def draw_menu():
 
     for item in game.get_menu_list():
         if item == 'Продолжить' and game.new_game:
-            text = font.render(item, True, 'DarkGray')
+            text = menu_font.render(item, True, 'DarkGray')
         else:
-            text = font.render(item, True, 'Black')
+            text = menu_font.render(item, True, 'Black')
 
-        text_rect = text.get_rect()
-        text_rect.center = (MENU_WIDTH // 2, y_tmp)
+        text_rect = text.get_rect(center=(MENU_WIDTH // 2, y_tmp))
         main_menu.blit(text, text_rect)
 
         if game.menu_title() == item:
-            text_rect.inflate_ip(FONT_SIZE // 2, FONT_SIZE // 2)
+            text_rect.inflate_ip(MENU_FONT_SIZE // 2, MENU_FONT_SIZE // 2)
             pygame.draw.rect(main_menu, SNAKE_COLOR, text_rect, 5)
 
         y_tmp += step
 
     screen.blit(main_menu, main_menu_rect)
+    screen.blit(title_menu, title_menu_rect)
 
 
 def main():
