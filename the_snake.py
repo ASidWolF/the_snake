@@ -1,4 +1,56 @@
-from random import randint
+"""                              Игра змейка.
+Суть игры:
+    Игрок управляет змейкой, которая движется по игровому полю, разделённому на клетки.
+Цель игры:
+    Увеличивать длину змейки, 'съедая' появляющиеся на экране яблоки и избегать плохих яблок и камней.
+Правила игры:
+    - Змейка движется в одном из четырёх направлений — вверх, вниз, влево или вправо.
+    - Игрок управляет направлением движения, но змейка не может остановиться или двигаться назад.
+    - Каждый раз, когда змейка съедает яблоко, она увеличивается в длину на один сегмент.
+    - Змейка может проходить сквозь одну стену и появляться с противоположной стороны поля.
+    - Если змейка съест 'плохое яблоко' - змейка уменьшится на 1 сегмент.
+    - Если змейка столкнётся сама с собой или с камнем — змейка уменьшится до 1 сегмента игра начнется заново.
+Реализация игры:
+    Игра реализована с помощью библиотеки { pygame }.
+    В игре реализовано 'игровое меню' позволяющее: начать 'Новую игру', 'Продолжить' текущюю или 'Выйти' из игры.
+    Все настройки игры (включая количество игровых объектов) осуществляются через блок констант. 
+    В игре реализованны:
+        Классы:
+            {GameObject} - базовый класс описывающий все объекты в игре включая змейку.
+            {Apple} и {Stone} - наследуются от {GameObject} и описывают объекты яблоко и камень.
+            {Snake} - наследуются от {GameObject} и описывает змейку.
+            {GameManger} - класс нужный для управления основной логикой игры.
+        Методы:
+            { handle_keys }
+                Отслеживает нажатые клавиши для управления змейкой.
+            { handle_keys_menu }
+                Отслеживает нажатые клавиши для управления в меню.
+            { quit_game }
+                Завершает игру.
+            { quit_pressed }
+                Реализует логику нажатия на клавишу ESCAPE в игре.
+            { get_good_apples }
+                Создает список хороших яблок. И возвращает его.
+            { get_stones }
+                Создает список хороших камней. И возвращает его.
+            { get_bad_apples }
+                Создает список хороших плохих яблок. И возвращает его.
+            { get_obstacles_position }
+                Возвращает список состоящий из координат всех объектов за исключением змейки.
+            { set_uniques_positions }
+                Задает всем объектам, кроме змейки, уникальные координаты.
+            { set_this_new_position }
+                Задает новые координаты съеденому яблоку.
+            { reset_game }
+                Сбрасывает игру. Все объекты возвращаются к стартовым значениям.
+            { snake_can_move }
+                Реализует логику движения змейки и встречи её с препятствиями.
+            { draw_menu }
+                Отрисовывает стартовое игровое меню.
+            { main }
+                Содержит главный игровой цикл. Реализует основную логику игры.
+"""
+from random import choice, randint
 from typing import Optional
 from time import time
 
@@ -10,6 +62,7 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 MENU_WIDTH, MENU_HEIGHT = 200, 200
 MIDDLE_SCREEN = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 GRID_SIZE = 20
+FONT_SIZE = 35
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
 FIELD_SIZE = GRID_WIDTH * GRID_HEIGHT
@@ -33,16 +86,17 @@ DEFAULT_COLOR = (0, 0, 0)
 """Управление скорость и замедлением игры."""
 GAME_SPEED = 20
 SLOW_SPEED = 5
-"""Количество игровых объектов наполе."""
+"""Количество игровых объектов на поле."""
 DEFAULT_COUNT_APPLES = 10
 DEFAULT_COUNT_BAD_APPLES = 5
 DEFAULT_COUNT_STONES = 5
+"""Клавиши."""
+KEY_ENTER = 13
 """Основной эран игры."""
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 """Меню игры."""
 main_menu = pygame.Surface((MENU_WIDTH, MENU_HEIGHT))
-main_menu_rect = main_menu.get_rect()
-main_menu_rect.center = MIDDLE_SCREEN
+main_menu_rect = main_menu.get_rect(center=MIDDLE_SCREEN)
 """Оюъект в котором будет хранится фон для игры."""
 background_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 """Создание фона и шума для эмитации сложной поверхности (например песка)."""
@@ -66,7 +120,7 @@ screen.blit(background_surface, (0, 0))
 game_caption = pygame.display.set_caption
 game_caption('Змейка')
 """Создаем объект текст."""
-font = pygame.font.Font(None, 30)
+font = pygame.font.Font(None, FONT_SIZE)
 """Объект для управления временем."""
 clock = pygame.time.Clock()
 
@@ -185,7 +239,7 @@ class Snake(GameObject):
             или несъедобным препятствием.
         { eat(apple: Apple) } -> None
             Принимает на вход объект класса {Apple} и в зависимости от его
-            атрибута {is_good_apple} либо увеличивается либо уменьшается.
+            атрибута {is_good_apple} либо увеличивает либо уменьшает змейку.
         { can_bite_itself() } -> bool
             Проверяет может ли следующим ходом змейка укусить сама себя.
         { try_bite(this: GameObject) } -> bool
@@ -257,6 +311,7 @@ class Snake(GameObject):
     def reset(self) -> None:
         """Сбрасывает змейку в начальное состояние."""
         Snake.__init__(self)
+        self.direction = choice([RIGHT, LEFT, UP, DOWN])
 
     def eat(self, apple: Apple) -> None:
         """Принимает на вход объект класса {Apple} и в зависимости от его
@@ -282,21 +337,31 @@ class GameManager():
     """Класс для управления общей логикой игры. Содержит:
 
     Атрибуты:
+        {reset} : bool
+            Атрибут для управления перезапуском игры.
+        {new_game} : bool
+            До первого запуска 'Новая игра' = {True}, далее {False}.
         {__game_is_run} : bool
             Содержит в себе статус игры (включено/выключено)
             в виде True / False
         {__slow_count} : int
             Счетчик для работы метода { slow_mode() }.
-        {__snake_length}: int
+        {__snake_length} : int
             Хранит длину змейки.
-        {__snake_speed}: float
+        {__snake_speed} : float
             Хранит скорость змейки (измеряется в клетках в минуту)
-        {__start_time}: Optional[float]
+        {__start_time} : Optional[float]
             Переменная для расчета скорости в методе { update_snake_speed() }
-        {__eaten_apples}: int
+        {__eaten_apples} : int
             Хранит количество съеденных яблок за всю игру.
-        {__reset_count}: int
+        {__reset_count} : int
             Хранит количество столкновений за всю игру.
+        {__status_menu} : bool
+            Хранит статус меню, где {True} меню активно, {False} меню скрыто.
+        {__menu_value} : int
+            Хранит номер активного пункта меню. (Считается от 0).
+        {__menu_sections} : list
+            Хранит список стартовых меню.
     Методы:
         { is_run() } -> bool
             Возвращает статус игры (включено/выключено)
@@ -306,6 +371,21 @@ class GameManager():
             Переключает положение игры в состояние - выключено.
         { menu_is_open() } -> bool
             Отображает статус меню (активно / не активно).
+        { close_menu(self) } -> None
+            Закрывает меню.
+        { open_menu(self) } -> None
+            Открывет меню.
+        { menu_up(self) } -> None
+            Передвижение по меню вверх.
+        { menu_down(self) } -> None
+            Передвижение по меню вниз.
+        { menu_title(self) } -> str
+            Возвращает название выбранного пункта меню.
+        { get_menu_step(self) } -> int
+            Возвращает расстояние между пунктами меню исходя из размеров
+            высоты меню, заданных константой {MENU_HEIGHT}, и их количества.
+        { get_menu_list(self) } -> list
+            Возвращает списо из пунктов меню.
         { slow_mode() } -> bool
             Возвращает {False} пока действует замедление для выбранного
             блока кода, и {True} в момент когда код должен быть выполнен.
@@ -320,6 +400,8 @@ class GameManager():
             При каждом вызове увеличиывет значение {__reset_count} на 1.
         { update_snake_length(self, length: int) } -> None
             При каждом вызове обновляет значение переменной {__snake_length}.
+        { reset_info(self) } -> None
+            Сбрасывает информаци о текущей игре.
         { info() } -> str:
             Выводит информацию об игре.
     """
@@ -330,7 +412,7 @@ class GameManager():
         """
         self.reset: bool = False
         self.new_game: bool = True
-        self.__game_is_run: bool = True
+        self.__game_is_run: Optional[bool]
         self.__slow_count: int = 0
         self.__snake_length: int = 1
         self.__snake_speed: float = 0
@@ -362,15 +444,19 @@ class GameManager():
         return self.__status_menu
 
     def close_menu(self) -> None:
+        """Закрывает меню."""
         self.__status_menu = False
 
     def open_menu(self) -> None:
+        """Открывает меню."""
         self.__status_menu = True
 
     def menu_up(self) -> None:
+        """Передвижение по меню вверх."""
         self.__menu_value -= 1 if self.__menu_value > 0 else 0
 
     def menu_down(self) -> None:
+        """Передвижение по меню вниз."""
         x = len(self.__menu_sections) - 1
         if self.__menu_value < x:
             self.__menu_value += 1
@@ -378,12 +464,17 @@ class GameManager():
             self.__menu_value = x
 
     def menu_title(self) -> str:
+        """Возвращает название выбранного пункта меню."""
         return self.__menu_sections[self.__menu_value]
 
     def get_menu_step(self) -> int:
+        """Возвращает расстояние между пунктами меню исходя из размеров
+        высоты меню, заданных константой {MENU_HEIGHT}, и их количества.
+        """
         return (MENU_HEIGHT // (len(self.__menu_sections) + 1))
 
     def get_menu_list(self) -> list:
+        """Возвращает списо из пунктов меню."""
         return self.__menu_sections
 
     def slow_mode(self, how_slow: int = SLOW_SPEED) -> bool:
@@ -419,6 +510,7 @@ class GameManager():
         self.__snake_length = length
 
     def reset_info(self) -> None:
+        """Сбрасывает информаци о текущей игре."""
         self.__snake_length = 1
         self.__eaten_apples = 0
         self.__reset_count = 0
@@ -434,12 +526,12 @@ class GameManager():
         return info
 
 
-"""Инициализируем для возможнисти управлять всей логикой."""
+"""Инициализируем {GameManager} для возможнисти управлять всей логикой."""
 game = GameManager()
 
 
 def handle_keys(game_obj: Snake) -> None:
-    """Отслеживает нажатые клавиши для управления змейкой"""
+    """Отслеживает нажатые клавиши для управления змейкой."""
     keys = pygame.key.get_pressed()
     if keys[pygame.K_UP] and game_obj.direction != DOWN:
         game_obj.next_direction = UP
@@ -452,22 +544,23 @@ def handle_keys(game_obj: Snake) -> None:
 
 
 def handle_keys_menu() -> None:
-    """Отслеживает нажатые клавиши для управления в меню"""
+    """Отслеживает нажатые клавиши для управления в меню."""
     keys = pygame.key.get_pressed()
 
-    if keys[13] and game.menu_title() == 'Новая игра':
+    if keys[KEY_ENTER] and game.menu_title() == 'Новая игра':
         if game.new_game:
             game.new_game = False
         else:
             game.reset = True
         game.close_menu()
-    elif keys[13] and game.menu_title() == 'Продолжить' and not game.new_game:
+    elif (keys[KEY_ENTER] and game.menu_title() == 'Продолжить'
+          and not game.new_game):
         game.close_menu()
-    elif keys[13] and game.menu_title() == 'Выход':
+    elif keys[KEY_ENTER] and game.menu_title() == 'Выход':
         game.switch_off()
         game.close_menu()
-
-    elif game.slow_mode(1):
+    
+    if game.slow_mode(1):
         if keys[pygame.K_UP]:
             game.menu_up()
         elif keys[pygame.K_DOWN]:
@@ -479,7 +572,13 @@ def quit_game() -> None:
     pygame.quit()
     raise SystemExit
 
+
 def quit_pressed() -> bool:
+    """Реализует логику нажатия на клавишу ESCAPE и закрытия окна игры
+    в ручную. При первом запуске и нажатии ESCAPE игра будет завершена,
+    в дальнейшем при нажатии будет возвращено значение {True}. Если
+    нажатия небыло вернет {False}.
+    """
     keys = pygame.key.get_pressed()
     for event in pygame.event.get():
         if event.type == pygame.QUIT or keys[pygame.K_ESCAPE]:
@@ -530,8 +629,8 @@ def set_uniques_positions(obstacles: list[GameObject],
 
 def set_this_new_position(apple: Apple, distroyed_apple: Apple,
                           snake: Snake, obstacles: list[GameObject]) -> None:
-    """Задает новые координаты съеденому яблоку а на его месте отрисовыывает
-    на мгновение 'поврежденное' яблоко, создавая эффект его поедания.
+    """Задает новые координаты съеденому яблоку, а на его месте отрисовыывает,
+    на мгновение, 'поврежденное' яблоко, создавая эффект его поедания.
     """
     obstacles_pos: list = get_obstacles_position(obstacles)
     snake_pos: list = snake.positions
@@ -545,6 +644,11 @@ def set_this_new_position(apple: Apple, distroyed_apple: Apple,
 
 def reset_game(snake: Snake, obstacles: list[GameObject],
                new_game: bool = False) -> None:
+    """Сбрасывает змейку к исходному состоянию и задаёт ей случайное
+    направление. Всем препятствиям задаются новые координаты. Если
+    {new_game} = {True} информация об игре будет сброшена. Если
+    {new_game} = {False} информация об игре будет обновлена.
+    """
     snake.reset()
     set_uniques_positions(obstacles, snake.position)
 
@@ -591,6 +695,7 @@ def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
 
 
 def draw_menu():
+    """Отрисовывает главное меню."""
     main_menu.fill(MAIN_MENU_COLOR)
     rect = (0, 0, MENU_WIDTH, MENU_HEIGHT)
     step = game.get_menu_step()
@@ -599,13 +704,17 @@ def draw_menu():
     y_tmp = step
 
     for item in game.get_menu_list():
-        text = font.render(item, True, 'Black')
+        if item == 'Продолжить' and game.new_game:
+            text = font.render(item, True, 'DarkGray')
+        else:
+            text = font.render(item, True, 'Black')
+
         text_rect = text.get_rect()
         text_rect.center = (MENU_WIDTH // 2, y_tmp)
         main_menu.blit(text, text_rect)
 
         if game.menu_title() == item:
-            text_rect.inflate_ip(15, 15)
+            text_rect.inflate_ip(FONT_SIZE // 2, FONT_SIZE // 2)
             pygame.draw.rect(main_menu, SNAKE_COLOR, text_rect, 5)
 
         y_tmp += step
@@ -622,6 +731,7 @@ def main():
     stones = get_stones()
     obstacles = good_apples + bad_apples + stones
     set_uniques_positions(obstacles, snake.position)
+    game.switch_on()
 
     while game.is_run():
         screen.blit(background_surface, (0, 0))
