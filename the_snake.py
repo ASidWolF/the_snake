@@ -61,9 +61,9 @@ from random import choice, randint
 from typing import Optional
 from time import time
 
-import pygame
+import pygame as pg
 
-pygame.init()
+pg.init()
 """Настройки экрана, игорового поля и меню."""
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 MENU_WIDTH, MENU_HEIGHT = 200, 200
@@ -102,17 +102,17 @@ DEFAULT_COUNT_STONES = 5
 """Клавиши."""
 KEY_ENTER = 13
 """Основной эран игры."""
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
+screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 """Меню игры."""
-main_menu = pygame.Surface((MENU_WIDTH, MENU_HEIGHT))
+main_menu = pg.Surface((MENU_WIDTH, MENU_HEIGHT))
 main_menu_rect = main_menu.get_rect(center=MIDDLE_SCREEN)
 """    """
-title_menu = pygame.Surface((TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT))
+title_menu = pg.Surface((TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT))
 title_menu_rect = main_menu.get_rect(
     center=(SCREEN_WIDTH // 2, main_menu_rect.y + TITLE_MENU_HEIGHT)
 )
 """Оюъект в котором будет хранится фон для игры."""
-background_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+background_surface = pg.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 """Создание фона и шума для эмитации сложной поверхности (например песка)."""
 background_surface.fill(BOARD_BACKGROUND_COLOR)
 for i in range(0, SCREEN_WIDTH, NOISE_SIZE):
@@ -123,7 +123,7 @@ for i in range(0, SCREEN_WIDTH, NOISE_SIZE):
                 BOARD_BACKGROUND_COLOR[k] - NOISE_STRENGTH,
                 BOARD_BACKGROUND_COLOR[k] + NOISE_STRENGTH
             )
-        pygame.draw.rect(
+        pg.draw.rect(
             background_surface,
             (rnd_rgb[0], rnd_rgb[1], rnd_rgb[2]),
             (i, j, NOISE_SIZE, NOISE_SIZE)
@@ -131,13 +131,13 @@ for i in range(0, SCREEN_WIDTH, NOISE_SIZE):
 """Отрисовка фона на экране"""
 screen.blit(background_surface, (0, 0))
 """Создаем объект для управления заголовком игры."""
-game_caption = pygame.display.set_caption
+game_caption = pg.display.set_caption
 game_caption('Змейка')
 """Создаем объект текст."""
-menu_font = pygame.font.Font(None, MENU_FONT_SIZE)
-title_font = pygame.font.Font(None, TITLE_FONT_SIZE)
+menu_font = pg.font.Font(None, MENU_FONT_SIZE)
+title_font = pg.font.Font(None, TITLE_FONT_SIZE)
 """Объект для управления временем."""
-clock = pygame.time.Clock()
+clock = pg.time.Clock()
 
 
 class GameObject():
@@ -162,16 +162,16 @@ class GameObject():
         self.position: tuple[int, int] = MIDDLE_SCREEN
         self.body_color = body_color
 
-    def draw(self, surface) -> None:
+    def draw(self) -> None:
         """Отрисовывает на поверхности {surface} фигуру
         заданных, константой {GRID_SIZE}, размеров.
         """
-        rect = pygame.Rect(
-            (self.position[0], self.position[1]),
+        rect = pg.Rect(
+            self.position,
             (GRID_SIZE, GRID_SIZE)
         )
-        pygame.draw.rect(surface, self.body_color, rect)
-        pygame.draw.rect(surface, BORDER_COLOR, rect, 1)
+        pg.draw.rect(screen, self.body_color, rect)
+        pg.draw.rect(screen, BORDER_COLOR, rect, 1)
 
     def randomize_position(self) -> None:
         """Задаёт объекту случайные координаты."""
@@ -228,9 +228,6 @@ class Snake(GameObject):
             Длина змейки. Изначально змейка имеет длину 1.
         {direction} : tuple[int, int]
             Направление движения змейки. По умолчанию змейка движется вправо.
-        {next_direction} : Optional[tuple[int, int]]
-            Следующее направление движения, которое будет применено после
-            обработки нажатия клавиши. По умолчанию {None}.
         {last} : Optional[tuple[int, int]]
             Используется для хранения позиции последнего сегмента змейки
             перед тем, как он исчезнет (при движении змейки).
@@ -240,12 +237,11 @@ class Snake(GameObject):
         { get_head_position() } -> tuple[int, int]
             Возвращает позицию головы змейки (первый элемент в
             списке {positions}).
-        { new_x_y_pos() } -> tuple[int, int]:
+        { new_head() } -> tuple[int, int]:
             Возвращает позицию в которую будет перемещена змейка
             исходя из направления движения.
-        { draw(surface) } -> None
-            Принимает на вход поверхность на которой отрисовывает
-            змейку, затирая след.
+        { draw() } -> None
+            Метод отрисовки змейки.
         { move() } -> None
             Расчитывает координаты новой головы методом { new_x_y_pos() } и
             добовляет к ней 'тело змейки' удалив из него крайний элемент.
@@ -267,23 +263,25 @@ class Snake(GameObject):
         позицию в список {positions}. Наследуясь от {GameObject}.
         """
         super().__init__(body_color)
+        self.reset()
+        self.direction: tuple[int, int] = RIGHT
+
+    def reset(self) -> None:
+        """Сбрасывает змейку в начальное состояние."""
         self.positions = [self.position]
         self.length: int = 1
-        self.direction: tuple[int, int] = RIGHT
-        self.next_direction: Optional[tuple[int, int]] = None
         self.last: Optional[tuple[int, int]] = None
+        self.direction = choice([RIGHT, LEFT, UP, DOWN])
 
-    def update_direction(self) -> None:
+    def update_direction(self, direction: tuple[int, int]) -> None:
         """Обновляет направление движения змейки."""
-        if self.next_direction:
-            self.direction = self.next_direction
-            self.next_direction = None
+        self.direction = direction
 
     def get_head_position(self) -> tuple[int, int]:
         """Возвращает позицию головы змейки."""
         return self.positions[0]
 
-    def new_x_y_pos(self) -> tuple[int, int]:
+    def new_head(self) -> tuple[int, int]:
         """Возвращает позицию в которую будет перемещена змейка."""
         new_x_pos, new_y_pos = self.get_head_position()
         new_x_pos = new_x_pos + self.direction[0] * GRID_SIZE
@@ -297,36 +295,30 @@ class Snake(GameObject):
 
         return (new_x_pos, new_y_pos)
 
-    def draw(self, surface) -> None:
+    def draw(self) -> None:
         """Отрисовывает на поверхности {surface} змейку заданных списком
         {positions} размеров, где константа {GRID_SIZE} размер сегмента. И
         и если {last} содержит координаты старого сегмента затирает его.
         """
         for position in self.positions:
             rect = (
-                pygame.Rect((position[0], position[1]), (GRID_SIZE, GRID_SIZE))
+                pg.Rect(position, (GRID_SIZE, GRID_SIZE))
             )
-            pygame.draw.rect(surface, self.body_color, rect)
-            pygame.draw.rect(surface, BORDER_COLOR, rect, 1)
+            pg.draw.rect(screen, self.body_color, rect)
+            pg.draw.rect(screen, BORDER_COLOR, rect, 1)
 
         if self.last:
-            last_rect = pygame.Rect(
-                (self.last[0], self.last[1]),
+            last_rect = pg.Rect(
+                self.last,
                 (GRID_SIZE, GRID_SIZE)
             )
-            pygame.draw.rect(surface, BOARD_BACKGROUND_COLOR, last_rect)
+            pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, last_rect)
 
-    def move(self) -> None:
+    def move(self, new_head: tuple[int, int]) -> None:
         """Сдвигает змейку на одну клетку игрового поля."""
-        new_x_pos, new_y_pos = self.new_x_y_pos()
-        head_snake = (new_x_pos, new_y_pos)
+        head_snake = self.new_head()
         self.last = self.positions.pop()
-        self.positions = [head_snake] + self.positions
-
-    def reset(self) -> None:
-        """Сбрасывает змейку в начальное состояние."""
-        Snake.__init__(self)
-        self.direction = choice([RIGHT, LEFT, UP, DOWN])
+        self.positions.insert(0, head_snake)
 
     def eat(self, apple: Apple) -> None:
         """Принимает на вход объект класса {Apple} и в зависимости от его
@@ -339,13 +331,13 @@ class Snake(GameObject):
 
         self.length = len(self.positions)
 
-    def can_bite_itself(self) -> bool:
+    def can_bite_itself(self, new_head: tuple[int, int]) -> bool:
         """Проверяет может ли следующим ходом змейка укусить сама себя."""
-        return self.new_x_y_pos() in self.positions
+        return new_head in self.positions
 
-    def try_bite(self, this: GameObject) -> bool:
+    def try_bite(self, new_head: tuple[int, int], object: GameObject) -> bool:
         """Принимает на вход объект и проверяет можно ли его укусить."""
-        return this.position == self.new_x_y_pos()
+        return object.position == new_head
 
 
 class GameManager():
@@ -543,22 +535,27 @@ class GameManager():
 game = GameManager()
 
 
-def handle_keys(game_obj: Snake) -> None:
+def handle_keys(snake: Snake) -> None:
     """Отслеживает нажатые клавиши для управления змейкой."""
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_UP] and game_obj.direction != DOWN:
-        game_obj.next_direction = UP
-    elif keys[pygame.K_DOWN] and game_obj.direction != UP:
-        game_obj.next_direction = DOWN
-    elif keys[pygame.K_LEFT] and game_obj.direction != RIGHT:
-        game_obj.next_direction = LEFT
-    elif keys[pygame.K_RIGHT] and game_obj.direction != LEFT:
-        game_obj.next_direction = RIGHT
+    keys = pg.key.get_pressed()
+    direction: Optional[tuple[int, int]] = None
+
+    if keys[pg.K_UP] and snake.direction != DOWN:
+        direction = UP
+    elif keys[pg.K_DOWN] and snake.direction != UP:
+        direction = DOWN
+    elif keys[pg.K_LEFT] and snake.direction != RIGHT:
+        direction = LEFT
+    elif keys[pg.K_RIGHT] and snake.direction != LEFT:
+        direction = RIGHT
+
+    if direction:
+        snake.update_direction(direction)
 
 
 def handle_keys_menu() -> None:
     """Отслеживает нажатые клавиши для управления в меню."""
-    keys = pygame.key.get_pressed()
+    keys = pg.key.get_pressed()
 
     if keys[KEY_ENTER] and game.menu_title() == 'Новая игра':
         if game.new_game:
@@ -574,23 +571,23 @@ def handle_keys_menu() -> None:
         game.close_menu()
 
     if game.slow_mode(1):
-        if keys[pygame.K_UP]:
+        if keys[pg.K_UP]:
             game.menu_up()
-        elif keys[pygame.K_DOWN]:
+        elif keys[pg.K_DOWN]:
             game.menu_down()
 
 
 def quit_game() -> None:
     """Завершает игру."""
-    pygame.quit()
+    pg.quit()
     raise SystemExit
 
 
 def quit_pressed() -> bool:
     """Реализует логику нажатия на клавишу ESCAPE."""
-    keys = pygame.key.get_pressed()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT or keys[pygame.K_ESCAPE]:
+    keys = pg.key.get_pressed()
+    for event in pg.event.get():
+        if event.type == pg.QUIT or keys[pg.K_ESCAPE]:
             if game.new_game:
                 game.switch_off()
             else:
@@ -622,14 +619,14 @@ def get_obstacles_position(obstacles: list[GameObject]) -> list:
 
 
 def set_uniques_positions(obstacles: list[GameObject],
-                          snake_position: tuple[int, int]) -> None:
+                          snake_positions: list[tuple[int, int]]) -> None:
     """Задает всем объектам из списка {obstacles} уникальные координаты."""
     new_obstacles_pos: list = []
 
     for obstacle in obstacles:
         obstacle.randomize_position()
 
-        while (obstacle.position == snake_position
+        while (obstacle.position in snake_positions
                or obstacle.position in new_obstacles_pos):
             obstacle.randomize_position()
 
@@ -648,7 +645,7 @@ def set_this_new_position(apple: Apple, distroyed_apple: Apple,
     while (apple.position in snake_pos or apple.position in obstacles_pos):
         apple.randomize_position()
 
-    distroyed_apple.draw(screen)
+    distroyed_apple.draw()
 
 
 def reset_game(snake: Snake, obstacles: list[GameObject],
@@ -659,7 +656,7 @@ def reset_game(snake: Snake, obstacles: list[GameObject],
     {new_game} = {False} информация об игре будет обновлена.
     """
     snake.reset()
-    set_uniques_positions(obstacles, snake.position)
+    set_uniques_positions(obstacles, snake.positions)
 
     if new_game:
         game.reset_info()
@@ -668,30 +665,31 @@ def reset_game(snake: Snake, obstacles: list[GameObject],
         game.update_count_of_resets()
 
 
-def snake_can_move(snake: Snake, obstacles, distroyed_apple) -> bool:
+def snake_can_move(new_head: tuple[int, int], snake: Snake,
+                   obstacles, distroyed_apple) -> bool:
     """Проверяет есть ли на пути препятствия. Если нет то возвращает {True}
     и змейка двигается дальше. Если есть препятствие, возвращется {False}.
     В зависимости от препятсвия змейка вырастет, уменьшится или сбросится
     в начальное состояние.
     """
-    if snake.can_bite_itself():
+    if snake.can_bite_itself(new_head):
         game.reset = True
 
-    for this in obstacles:
+    for obstacle in obstacles:
 
-        if snake.try_bite(this) and type(this) is Apple:
-            snake.eat(this)
+        if snake.try_bite(new_head, obstacle) and type(obstacle) is Apple:
+            snake.eat(obstacle)
             game.update_snake_length(snake.length)
             game.update_eaten_apples()
 
             if snake.length + len(obstacles) <= FIELD_SIZE:
-                set_this_new_position(this, distroyed_apple,
+                set_this_new_position(obstacle, distroyed_apple,
                                       snake, obstacles)
                 return False
             else:
                 game.reset = True
 
-        elif snake.try_bite(this) and type(this) is Stone:
+        elif snake.try_bite(new_head, obstacle) and type(obstacle) is Stone:
             game.reset = True
 
         if game.reset:
@@ -714,7 +712,7 @@ def draw_menu():
     rect = (0, 0, MENU_WIDTH, MENU_HEIGHT)
     step = game.get_menu_step()
 
-    pygame.draw.rect(main_menu, MENU_BORDER_COLOR, rect, 4)
+    pg.draw.rect(main_menu, MENU_BORDER_COLOR, rect, 4)
     y_tmp = step
 
     for item in game.get_menu_list():
@@ -728,7 +726,7 @@ def draw_menu():
 
         if game.menu_title() == item:
             text_rect.inflate_ip(MENU_FONT_SIZE // 2, MENU_FONT_SIZE // 2)
-            pygame.draw.rect(main_menu, SNAKE_COLOR, text_rect, 5)
+            pg.draw.rect(main_menu, SNAKE_COLOR, text_rect, 5)
 
         y_tmp += step
 
@@ -764,24 +762,24 @@ def main():
             if quit_pressed():
                 game.open_menu()
 
-            snake.draw(screen)
+            snake.draw()
             for obstacle in obstacles:
-                obstacle.draw(screen)
+                obstacle.draw()
 
             handle_keys(snake)
 
             if game.slow_mode():
-                snake.update_direction()
+                new_head = snake.new_head()
 
-                if snake_can_move(snake, obstacles, distroyed_apple):
-                    snake.move()
+                if snake_can_move(new_head, snake, obstacles, distroyed_apple):
+                    snake.move(new_head)
 
                 game.update_snake_speed(time())
 
             game_caption(game.info())
 
         clock.tick(GAME_SPEED)
-        pygame.display.update()
+        pg.display.update()
 
     quit_game()
 
