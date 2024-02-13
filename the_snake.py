@@ -1,34 +1,3 @@
-# Приветствую Андрей! Было сложно, но я исправил почти всё что требовалось!
-# Почему почти? Объясню чуть ниже!
-
-# Для начала представлюсь! Коротенечко.
-# Зовут меня Александр, 85 года выпуска. Мои познания в программировании:
-# Pascal и Visual Basic в техникуме (2003-2006г)
-# Игровой движок Unity и C# самостоятельное изучение.
-
-# Для меня программирование - это не просто строчки кода, это очень творческий
-# процесс, как написание книги или создание музыкального произведения. Поэтому
-# я очень ревностно и тяжело воспринимаю критику своего кода, если она,
-# по моему мнению, не конструктивная. Так как трачу очень много времени на то,
-# что бы привести всё к варианту который меня устроит.
-
-# Что я не исправил и почему:
-#     1 - Параметр {is_good_apple}. Отсутствует даже намек, почему его
-# надо убрать. Если данный параметр убрать, то перестанет работать логика
-# "плохое яблоко", и змейка перестанет уменьшаться при взаимодействии с
-# этим типом яблок. Либо придется писать дополнительную логику, чтобы это
-# реализовать, что нецелесообразно так как уже всё работает.
-
-#     2 - Класс {Stone}. Не логично убирать его в класс Apple, так как это
-# разные сущности, что не совсем в духе Python и ООП (если я правильно
-# формулирую мысль). Если сменить название {Apple} на {Obstacle}, то {Stone}
-# туда отлично впишется. (Переименовывать классы я не могу, не пройдут тесты).
-
-#     3 - Рисовать только голову змейки и убирать хвост. Это хорошее
-# предложение, но не применимо к данному случаю, так как каждый фрейм
-# отрисовывается 'подложка' на экране, создающей текстуру 'песка', которая
-# затирает змейку. То есть, если рисовать голову и убирать хвост, то змейка
-# целиком никогда не появится на экране.
 """Игра змейка.
 Суть игры:
     - Игрок управляет змейкой, которая движется по игровому полю, разделённому
@@ -44,8 +13,13 @@
     - Змейка может проходить сквозь одну стену и появляться с противоположной
     стороны поля.
     - Если змейка съест 'плохое яблоко' - змейка уменьшится на 1 сегмент.
-    - Если змейка столкнётся сама с собой или с камнем — змейка уменьшится
-    до 1 сегмента игра начнется заново.
+    - Если змейка столкнётся сама с собой — змейка уменьшится до 1 сегмента
+    игра начнется заново.
+    - При столкновении с камнем реализуется следующая логика:
+        - если вес змейки меньше веса  камня, она уменьшается до 1 сегмента
+        - если вес змейки больше чем у камня, камень отлетает в сторону
+        змейка уменьшается нас несколько сегментов
+        - если камень отлетев поподает в змейку, она уменьшается до 1 сегмента
 Реализация игры:
     - Игра реализована с помощью библиотеки { pygame }.
     - В игре реализовано 'игровое меню' позволяющее: начать 'Новую игру',
@@ -79,6 +53,8 @@
             Инициализирует все игровые объекты.
         { reset_game }
             Сбрасывает игру. Все объекты возвращаются к стартовым значениям.
+        { clear_stone_trace() }
+            Расчищает путь камня, раскидывая встреченные объекты.
         { snake_can_move }
             Реализует логику движения змейки и встречи её с препятствиями.
         { draw_menu }
@@ -104,6 +80,11 @@ TITLE_FONT_SIZE = 60
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
 FIELD_SIZE = GRID_WIDTH * GRID_HEIGHT
+FIELD_CELSS = set(
+    [(x * GRID_SIZE, y * GRID_SIZE)
+     for x in range(GRID_WIDTH)
+     for y in range(GRID_HEIGHT)]
+)
 NOISE_SIZE = 5
 NOISE_STRENGTH = 4
 """Направления движения змейки."""
@@ -128,6 +109,7 @@ SLOW_SPEED = 10
 DEFAULT_COUNT_APPLES = 20
 DEFAULT_COUNT_BAD_APPLES = 20
 DEFAULT_COUNT_STONES = 20
+DEFAULT_STONE_WEIGHT = 5
 """Клавиши."""
 KEY_ENTER = 13
 """Основной эран игры."""
@@ -187,6 +169,8 @@ class GameObject():
             Задаёт случайные координата для объекта.
     """
 
+    name = 'game_object'
+
     def __init__(self,
                  body_color: tuple[int, int, int] = DEFAULT_COLOR) -> None:
         """Инициализирует новый экземпляр класса {GameObject}."""
@@ -203,53 +187,41 @@ class GameObject():
                   color: Optional[tuple[int, int, int]] = None,
                   tail: bool = False) -> None:
         """Отрисовывает ячейку заданых размеров."""
-        if color:
-            self.body_color = color
+        if not color:
+            color = self.body_color
 
         rect = pg.Rect(
             position,
             (GRID_SIZE, GRID_SIZE)
         )
-        pg.draw.rect(screen, self.body_color, rect)
+        pg.draw.rect(screen, color, rect)
         if not tail:
             pg.draw.rect(screen, BORDER_COLOR, rect, 1)
 
     def randomize_position(self,
-                           obstacles_pos: list[tuple[int, int]] = [],
-                           snake_pos: list[tuple[int, int]] = []) -> None:
+                           used_cells: list[tuple[int, int]] = []) -> None:
         """Задаёт объекту случайные координаты."""
-        while (self.position in snake_pos
-               or self.position in obstacles_pos):
-            self.position = (
-                randint(0, GRID_WIDTH - 1) * GRID_SIZE,
-                randint(0, GRID_HEIGHT - 1) * GRID_SIZE
-            )
+        self.position = choice(tuple(FIELD_CELSS - set(used_cells)))
 
 
 class Apple(GameObject):
-    """Класс описывающий игровой объект Яблоко.
-    Наследуется от {GameObject}, обладает одним дополнительным параметром:
-
-        {is_good_apple} : bool
-            Параметр отвечающий за игровую логику 'хорошее/плохое яблоко'.
-            Если {True} - размер 'Змейки' при взаимодействии увеличится.
-            Если {False} - размер 'Змейки' при взаимодействии уменьшится.
+    """Класс описывающий игровой объект Яблоко. Наследуется от {GameObject}.
     Методы:
         { draw() } -> None
             Рисует объект на экране при помощи метода { draw_cell }.
     """
 
+    name = 'apple'
+
     def __init__(self,
                  body_color: tuple[int, int, int] = APPLE_COLOR,
-                 is_good_apple: bool = True,
-                 obstacles_pos: list = [],
-                 snake_pos: list = []) -> None:
+                 used_cells: list = []) -> None:
         """Инициализирует экземпляр класса {Apple} и задает ему
         случайные координаты. Наследуется от {GameObject}.
         """
         super().__init__(body_color)
-        self.randomize_position(obstacles_pos, snake_pos)
-        self.is_good_apple = is_good_apple
+        self.randomize_position(used_cells)
+        # self.is_good_apple = is_good_apple
 
     def draw(self) -> None:
         """Рисует объет на экране."""
@@ -259,24 +231,53 @@ class Apple(GameObject):
 class Stone(GameObject):
     """Класс описывающий игровой объект Камень. Наследуется от {GameObject}.
     При столкновении с камнем 'Змейка' принимает исходное состояние.
+    Атрибуты:
+        {weight} : int
+            Вес камня. 1 единица веса эквивалентна 1 сегменту змейки.
     Методы:
         { draw() } -> None
             Рисует объект на экране при помощи метода { draw_cell }.
+        { get_trace() } -> list[tuple[int, int]]
+            Возвращает путь по которому пролетит камень после того как
+            с ним сталкнеётся змейка.
+        { move() } -> None
+            Сдвигает камень в новую позицию.
     """
+
+    name = 'stone'
 
     def __init__(self,
                  body_color: tuple[int, int, int] = STONE_COLOR,
-                 obstacles_pos: list = [],
-                 snake_pos: list = []) -> None:
+                 used_cells: list = [],
+                 weight: int = DEFAULT_STONE_WEIGHT) -> None:
         """Инициализирует экземпляр класса {Stone} и задает ему случайные
         координаты. Наследуется от {GameObject}.
         """
         super().__init__(body_color)
-        self.randomize_position(obstacles_pos, snake_pos)
+        self.randomize_position(used_cells)
+        self.weight = weight
 
     def draw(self) -> None:
         """Рисует объет на экране."""
         self.draw_cell(self.position)
+
+    def get_trace(self, direction: tuple[int, int]) -> list[tuple[int, int]]:
+        """Возвращает след по которому пролетит камень."""
+        trace: list[tuple[int, int]] = []
+        position = self.position
+
+        for _ in range(self.weight):
+            position = (
+                (position[0] + direction[0] * GRID_SIZE) % SCREEN_WIDTH,
+                (position[1] + direction[1] * GRID_SIZE) % SCREEN_HEIGHT
+            )
+            trace += [position]
+
+        return trace
+
+    def move(self, new_position: tuple[int, int]) -> None:
+        """Сдивгает камень в новую позицию."""
+        self.position = new_position
 
 
 class Snake(GameObject):
@@ -299,6 +300,14 @@ class Snake(GameObject):
             Сбрасывает змейку на стартовые значения.
         { update_direction() } -> None
             Обновляет направление движения змейки.
+        { new_head() } -> tuple[int, int]
+            Возвращает координаты новой головы.
+        { grow_up() } -> None
+            Увиличивает змейку на один сегмент.
+        { cut_tail() } -> None
+            Уменьшает змейку на один сегмент с конца.
+        { update_size_info() } -> None
+            Обновляет информацию о размере змейки.
         { get_head_position() } -> tuple[int, int]
             Возвращает позицию головы змейки (первый элемент в
             списке {positions}).
@@ -331,6 +340,29 @@ class Snake(GameObject):
     def update_direction(self, direction: tuple[int, int]) -> None:
         """Обновляет направление движения змейки."""
         self.direction = direction
+
+    def new_head(self) -> tuple[int, int]:
+        """Возвращает координаты новой головы."""
+        x_pos, y_pos = self.get_head_position()
+        return (
+            (x_pos + self.direction[0] * GRID_SIZE) % SCREEN_WIDTH,
+            (y_pos + self.direction[1] * GRID_SIZE) % SCREEN_HEIGHT
+        )
+
+    def grow_up(self, new_segment: tuple[int, int]) -> None:
+        """Увиличивает змейку на один сегмент."""
+        self.positions.insert(0, new_segment)
+        self.update_size_info()
+
+    def cut_tail(self) -> None:
+        """Уменьшает змейку на один сегмент с конца."""
+        self.positions.pop()
+        self.update_size_info()
+
+    def update_size_info(self) -> None:
+        """Обновляет информацию о размере змейки."""
+        self.length = len(self.positions)
+        game.update_snake_length(self.length)
 
     def get_head_position(self) -> tuple[int, int]:
         """Возвращает позицию головы змейки."""
@@ -617,67 +649,59 @@ def quit_pressed() -> bool:
 
 
 def get_good_apples(count: int = DEFAULT_COUNT_APPLES,
-                    obstacles_pos: list = [],
-                    snake_pos: list = []) -> tuple[list, list]:
+                    used_cells: list = []) -> tuple[list, list]:
     """Создает список хороших яблок. И возвращает его."""
-    obstacles_pos = obstacles_pos
+    used_cells = used_cells
     apples = []
     for _ in range(0, count):
-        apple = Apple(obstacles_pos=obstacles_pos, snake_pos=snake_pos)
+        apple = Apple(used_cells=used_cells)
         apples += [apple]
-        obstacles_pos += [apple.position]
+        used_cells += [apple.position]
 
-    return apples, obstacles_pos
+    return apples, used_cells
 
 
 def get_stones(count: int = DEFAULT_COUNT_STONES,
-               obstacles_pos: list = [],
-               snake_pos: list = []) -> tuple[list, list]:
-    """Создает список хороших яблок. И возвращает его."""
-    obstacles_pos = obstacles_pos
+               used_cells: list = []) -> tuple[list, list]:
+    """Создает список камней. И возвращает его."""
+    used_cells = used_cells
     stones = []
     for _ in range(0, count):
-        stone = Stone(obstacles_pos=obstacles_pos, snake_pos=snake_pos)
+        stone = Stone(used_cells=used_cells)
         stones += [stone]
-        obstacles_pos += [stone.position]
+        used_cells += [stone.position]
 
-    return stones, obstacles_pos
+    return stones, used_cells
 
 
 def get_bad_apples(count: int = DEFAULT_COUNT_BAD_APPLES,
-                   obstacles_pos: list = [],
-                   snake_pos: list = []) -> tuple[list, list]:
+                   used_cells: list = []) -> tuple[list, list]:
     """Создает список плохих яблок. И возвращает его."""
-    obstacles_pos = obstacles_pos
+    used_cells = used_cells
     bad_apples = []
     for _ in range(0, count):
-        bad_apple = Apple(BAD_APPLE_COLOR, False, obstacles_pos, snake_pos)
+        bad_apple = Apple(BAD_APPLE_COLOR, used_cells)
+        bad_apple.name = 'bad_apple'
         bad_apples += [bad_apple]
-        obstacles_pos += [bad_apple.position]
+        used_cells += [bad_apple.position]
 
-    return bad_apples, obstacles_pos
+    return bad_apples, used_cells
 
 
-def get_obstacles_position(obstacles: list[GameObject]) -> list:
+def get_all_position(snake: Snake, obstacles: list[GameObject]) -> list:
     """Возвращает список состоящий из координат всех
     созданных объектов, змейка в список не входит.
     """
-    return [obstacle.position for obstacle in obstacles]
+    return [obstacle.position for obstacle in obstacles] + snake.positions
 
 
 def init_game_obgects() -> tuple[Snake, list[GameObject]]:
     """Инициализирует все игровые объекты."""
     snake = Snake()
-    obstacles_pos: list = []
-    good_apples, obstacles_pos = get_good_apples(
-        obstacles_pos=obstacles_pos, snake_pos=snake.positions
-    )
-    bad_apples, obstacles_pos = get_bad_apples(
-        obstacles_pos=obstacles_pos, snake_pos=snake.positions
-    )
-    stones, obstacles_pos = get_stones(
-        obstacles_pos=obstacles_pos, snake_pos=snake.positions
-    )
+    used_cells: list = [] + snake.positions
+    good_apples, used_cells = get_good_apples(used_cells=used_cells)
+    bad_apples, used_cells = get_bad_apples(used_cells=used_cells)
+    stones, used_cells = get_stones(used_cells=used_cells)
     obstacles = good_apples + bad_apples + stones
 
     return snake, obstacles
@@ -698,6 +722,23 @@ def reset_game(new_game: bool = False) -> tuple[Snake, list[GameObject]]:
     return init_game_obgects()
 
 
+def clear_stone_trace(stone: Stone, snake: Snake,
+                      obstacles: list[GameObject]) -> tuple[int, int]:
+    """Очищает путь камня, задавая всем встреченым препятствиям новые
+    координаты. И возвращает новое расположение камяня.
+    """
+    trace = stone.get_trace(snake.direction)
+    if trace[-1] not in snake.positions:
+        for obstacle in obstacles:
+            if obstacle.position in trace:
+                all_positons = get_all_position(snake, obstacles)
+                obstacle.randomize_position(all_positons)
+    else:
+        game.reset = True
+
+    return trace[-1]
+
+
 def snake_can_move(new_head: tuple[int, int], snake: Snake,
                    obstacles) -> bool:
     """Проверяет есть ли на пути препятствия. Если нет то возвращает {True}
@@ -712,25 +753,30 @@ def snake_can_move(new_head: tuple[int, int], snake: Snake,
     for obstacle in obstacles:
 
         if snake.try_bite(new_head, obstacle) and type(obstacle) is Apple:
-            if obstacle.is_good_apple:
-                snake.positions.insert(0, obstacle.position)
-            elif snake.length > 1:
-                snake.positions.pop()
+            if obstacle.name == 'apple':
+                snake.grow_up(obstacle.position)
+            elif obstacle.name == 'bad_apple' and snake.length > 1:
+                snake.cut_tail()
 
-            snake.length = len(snake.positions)
-            game.update_snake_length(snake.length)
             game.update_eaten_apples()
 
             if snake.length + len(obstacles) <= FIELD_SIZE:
-                obstacles_pos = get_obstacles_position(obstacles)
-                obstacle.randomize_position(obstacles_pos, snake.positions)
-                return False
+                all_positons = get_all_position(snake, obstacles)
+                obstacle.randomize_position(all_positons)
             else:
                 game.reset = True
-                return False
+
+            return False
 
         elif snake.try_bite(new_head, obstacle) and type(obstacle) is Stone:
-            game.reset = True
+            if snake.length <= obstacle.weight:
+                game.reset = True
+            else:
+                for _ in range(obstacle.weight):
+                    snake.cut_tail()
+                new_position = clear_stone_trace(obstacle, snake, obstacles)
+                obstacle.move(new_position)
+
             return False
 
     return True
@@ -799,11 +845,7 @@ def main():
             handle_keys(snake)
 
             if game.slow_mode():
-                x_pos, y_pos = snake.get_head_position()
-                new_head = (
-                    (x_pos + snake.direction[0] * GRID_SIZE) % SCREEN_WIDTH,
-                    (y_pos + snake.direction[1] * GRID_SIZE) % SCREEN_HEIGHT
-                )
+                new_head = snake.new_head()
 
                 if snake_can_move(new_head, snake, obstacles):
                     snake.move(new_head)
