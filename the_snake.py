@@ -25,42 +25,6 @@
     - В игре реализовано 'игровое меню' позволяющее: начать 'Новую игру',
     'Продолжить' текущюю или 'Выйти' из игры.
     - Все настройки игры осуществляются через блок констант.
-В игре реализованны:
-    Классы:
-        {GameObject} - базовый класс описывающий все объекты в игре.
-        {Apple} - наследуются от {GameObject} и описывают объект яблоко.
-        {Stone} - наследуются от {GameObject} и описывают объект камень.
-        {Snake} - наследуются от {GameObject} и описывает змейку.
-        {GameManger} - класс нужный для управления основной логикой игры.
-    Методы:
-        { handle_keys }
-            Отслеживает нажатые клавиши для управления змейкой.
-        { handle_keys_menu }
-            Отслеживает нажатые клавиши для управления в меню.
-        { quit_game }
-            Завершает игру.
-        { quit_pressed }
-            Реализует логику нажатия на клавишу ESCAPE в игре.
-        { get_good_apples }
-            Создает список хороших яблок. И возвращает его.
-        { get_stones }
-            Создает список хороших камней. И возвращает его.
-        { get_bad_apples }
-            Создает список хороших плохих яблок. И возвращает его.
-        { get_obstacles_position }
-            Возвращает список из координат всех объектов за исключением змейки.
-        { init_game_objects }
-            Инициализирует все игровые объекты.
-        { reset_game }
-            Сбрасывает игру. Все объекты возвращаются к стартовым значениям.
-        { clear_stone_trace() }
-            Расчищает путь камня, раскидывая встреченные объекты.
-        { snake_can_move }
-            Реализует логику движения змейки и встречи её с препятствиями.
-        { draw_menu }
-            Отрисовывает стартовое игровое меню.
-        { main }
-            Содержит главный игровой цикл. Реализует основную логику игры.
 """
 from random import choice, randint
 from typing import Optional
@@ -80,10 +44,10 @@ TITLE_FONT_SIZE = 60
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
 FIELD_SIZE = GRID_WIDTH * GRID_HEIGHT
-FIELD_CELSS = set(
-    [(x * GRID_SIZE, y * GRID_SIZE)
-     for x in range(GRID_WIDTH)
-     for y in range(GRID_HEIGHT)]
+FIELD_CELLS = set(
+    (x * GRID_SIZE, y * GRID_SIZE)
+    for x in range(GRID_WIDTH)
+    for y in range(GRID_HEIGHT)
 )
 NOISE_SIZE = 5
 NOISE_STRENGTH = 4
@@ -124,21 +88,8 @@ title_menu_rect = main_menu.get_rect(
 )
 """Оюъект в котором будет хранится фон для игры."""
 background_surface = pg.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-"""Создание фона и шума для эмитации сложной поверхности (например песка)."""
+"""Создание фона для созданиея на ней текстуры (например песка)."""
 background_surface.fill(BOARD_BACKGROUND_COLOR)
-for i in range(0, SCREEN_WIDTH, NOISE_SIZE):
-    for j in range(0, SCREEN_HEIGHT, NOISE_SIZE):
-        rnd_rgb = [0, 0, 0]
-        for k in range(3):
-            rnd_rgb[k] = randint(
-                BOARD_BACKGROUND_COLOR[k] - NOISE_STRENGTH,
-                BOARD_BACKGROUND_COLOR[k] + NOISE_STRENGTH
-            )
-        pg.draw.rect(
-            background_surface,
-            (rnd_rgb[0], rnd_rgb[1], rnd_rgb[2]),
-            (i, j, NOISE_SIZE, NOISE_SIZE)
-        )
 """Отрисовка фона на экране"""
 screen.blit(background_surface, (0, 0))
 """Создаем объект для управления заголовком игры."""
@@ -152,30 +103,15 @@ clock = pg.time.Clock()
 
 
 class GameObject():
-    """Базовый класс от которого наследуются все игровые объекты. Содержит:
-
-    Атрибуты:
-        {position} : tuple[int, int]
-            Координаты объекта на поле, от которых он отрисовывается.
-        {body_color} : tuple[int, int, int]
-            Цвет объекта заданный в формате RGB.
-
-    Методы:
-        { draw() } -> None
-            Базовый метод рисования, переопределяется в наследниках.
-        { draw_cell() } -> None
-            Метод рисования одной ячейки.
-        { randomize_position() } -> None
-            Задаёт случайные координата для объекта.
-    """
-
-    name = 'game_object'
+    """Базовый класс от которого наследуются все игровые объекты."""
 
     def __init__(self,
-                 body_color: tuple[int, int, int] = DEFAULT_COLOR) -> None:
+                 body_color: tuple[int, int, int] = DEFAULT_COLOR,
+                 name: Optional[str] = None) -> None:
         """Инициализирует новый экземпляр класса {GameObject}."""
         self.position: tuple[int, int] = MIDDLE_SCREEN
         self.body_color = body_color
+        self.name = name or str(self.__class__.__name__).lower()
 
     def draw(self) -> None:
         """Базовый метод рисования объектов. Определяется для
@@ -187,8 +123,7 @@ class GameObject():
                   color: Optional[tuple[int, int, int]] = None,
                   tail: bool = False) -> None:
         """Отрисовывает ячейку заданых размеров."""
-        if not color:
-            color = self.body_color
+        color = color or self.body_color
 
         rect = pg.Rect(
             position,
@@ -201,58 +136,33 @@ class GameObject():
     def randomize_position(self,
                            used_cells: list[tuple[int, int]] = []) -> None:
         """Задаёт объекту случайные координаты."""
-        self.position = choice(tuple(FIELD_CELSS - set(used_cells)))
+        self.position = choice(tuple(FIELD_CELLS - set(used_cells)))
 
 
 class Apple(GameObject):
-    """Класс описывающий игровой объект Яблоко. Наследуется от {GameObject}.
-    Методы:
-        { draw() } -> None
-            Рисует объект на экране при помощи метода { draw_cell }.
-    """
-
-    name = 'apple'
+    """Класс описывающий игровой объект Яблоко."""
 
     def __init__(self,
                  body_color: tuple[int, int, int] = APPLE_COLOR,
-                 used_cells: list = []) -> None:
-        """Инициализирует экземпляр класса {Apple} и задает ему
-        случайные координаты. Наследуется от {GameObject}.
-        """
-        super().__init__(body_color)
+                 used_cells: list = [],
+                 name: Optional[str] = None) -> None:
+        """Инициализирует экземпляр класса {Apple}."""
+        super().__init__(body_color, name)
         self.randomize_position(used_cells)
-        # self.is_good_apple = is_good_apple
 
     def draw(self) -> None:
-        """Рисует объет на экране."""
+        """Рисует объект на экране."""
         self.draw_cell(self.position)
 
 
 class Stone(GameObject):
-    """Класс описывающий игровой объект Камень. Наследуется от {GameObject}.
-    При столкновении с камнем 'Змейка' принимает исходное состояние.
-    Атрибуты:
-        {weight} : int
-            Вес камня. 1 единица веса эквивалентна 1 сегменту змейки.
-    Методы:
-        { draw() } -> None
-            Рисует объект на экране при помощи метода { draw_cell }.
-        { get_trace() } -> list[tuple[int, int]]
-            Возвращает путь по которому пролетит камень после того как
-            с ним сталкнеётся змейка.
-        { move() } -> None
-            Сдвигает камень в новую позицию.
-    """
-
-    name = 'stone'
+    """Класс описывающий игровой объект Камень."""
 
     def __init__(self,
                  body_color: tuple[int, int, int] = STONE_COLOR,
                  used_cells: list = [],
                  weight: int = DEFAULT_STONE_WEIGHT) -> None:
-        """Инициализирует экземпляр класса {Stone} и задает ему случайные
-        координаты. Наследуется от {GameObject}.
-        """
+        """Инициализирует экземпляр класса."""
         super().__init__(body_color)
         self.randomize_position(used_cells)
         self.weight = weight
@@ -264,14 +174,13 @@ class Stone(GameObject):
     def get_trace(self, direction: tuple[int, int]) -> list[tuple[int, int]]:
         """Возвращает след по которому пролетит камень."""
         trace: list[tuple[int, int]] = []
-        position = self.position
-
-        for _ in range(self.weight):
-            position = (
-                (position[0] + direction[0] * GRID_SIZE) % SCREEN_WIDTH,
-                (position[1] + direction[1] * GRID_SIZE) % SCREEN_HEIGHT
-            )
-            trace += [position]
+        pos = self.position
+        length = self.weight
+        step = (GRID_SIZE * direction[0], GRID_SIZE * direction[1])
+        trace = [
+            (pos[0] + step[0] * x, pos[1] + step[1] * x)
+            for x in range(length)
+        ]
 
         return trace
 
@@ -281,51 +190,11 @@ class Stone(GameObject):
 
 
 class Snake(GameObject):
-    """Класс описывающий игровой объект 'Змейка'.
-    Наследуется от {GameObject}. Содержит:
-
-    Атрибуты:
-        {positions} : list
-            Содержит список всех позиции всех сегментов тела змейки.
-            Начальная позиция — центр экрана.
-        {length} : int
-            Длина змейки. Изначально змейка имеет длину 1.
-        {direction} : tuple[int, int]
-            Направление движения змейки. По умолчанию змейка движется вправо.
-        {last} : Optional[tuple[int, int]]
-            Используется для хранения позиции последнего сегмента змейки
-            перед тем, как он исчезнет (при движении змейки).
-    Методы:
-        { reset() } -> None
-            Сбрасывает змейку на стартовые значения.
-        { update_direction() } -> None
-            Обновляет направление движения змейки.
-        { new_head() } -> tuple[int, int]
-            Возвращает координаты новой головы.
-        { grow_up() } -> None
-            Увиличивает змейку на один сегмент.
-        { cut_tail() } -> None
-            Уменьшает змейку на один сегмент с конца.
-        { update_size_info() } -> None
-            Обновляет информацию о размере змейки.
-        { get_head_position() } -> tuple[int, int]
-            Возвращает позицию головы змейки (первый элемент в
-            списке {positions}).
-        { draw() } -> None
-            Рисует змейку на экране.
-        { move() } -> None
-            Сдвигает змейку на одну клетку игрового поля.
-        { can_bite_itself() } -> bool
-            Проверяет может ли следующим ходом змейка укусить сама себя.
-        { try_bite() } -> bool
-            Принимает на вход объект и проверяет можно ли его укусить.
-    """
+    """Класс описывающий игровой объект 'Змейка'."""
 
     def __init__(self,
                  body_color: tuple[int, int, int] = SNAKE_COLOR) -> None:
-        """Инициализирует экземпляр класса {Snake}. Наследуется
-        от {GameObject}.
-        """
+        """Инициализирует экземпляр класса {Snake}."""
         super().__init__(body_color)
         self.reset()
         self.direction: tuple[int, int] = RIGHT
@@ -393,75 +262,7 @@ class Snake(GameObject):
 
 
 class GameManager():
-    """Класс для управления общей логикой игры. Содержит:
-
-    Атрибуты:
-        {reset} : bool
-            Атрибут для управления перезапуском игры.
-        {new_game} : bool
-            До первого запуска 'Новая игра' = {True}, далее {False}.
-        {__game_is_run} : bool
-            Содержит в себе статус игры (включено/выключено)
-            в виде True / False
-        {__slow_count} : int
-            Счетчик для работы метода { slow_mode() }.
-        {__snake_length} : int
-            Хранит длину змейки.
-        {__snake_speed} : float
-            Хранит скорость змейки (измеряется в клетках в минуту)
-        {__start_time} : Optional[float]
-            Переменная для расчета скорости в методе { update_snake_speed() }
-        {__eaten_apples} : int
-            Хранит количество съеденных яблок за всю игру.
-        {__reset_count} : int
-            Хранит количество столкновений за всю игру.
-        {__status_menu} : bool
-            Хранит статус меню, где {True} меню активно, {False} меню скрыто.
-        {__menu_value} : int
-            Хранит номер активного пункта меню. (Считается от 0).
-        {__menu_sections} : list
-            Хранит список стартовых меню.
-    Методы:
-        { is_run() } -> bool
-            Возвращает статус игры (включено/выключено)
-        { game_switch_on() } -> None
-            Переключает положение игры в состояние - включено.
-        { game_switch_off() } -> None
-            Переключает положение игры в состояние - выключено.
-        { menu_is_open() } -> bool
-            Отображает статус меню (активно / не активно).
-        { close_menu(self) } -> None
-            Закрывает меню.
-        { open_menu(self) } -> None
-            Открывет меню.
-        { menu_up(self) } -> None
-            Передвижение по меню вверх.
-        { menu_down(self) } -> None
-            Передвижение по меню вниз.
-        { menu_title(self) } -> str
-            Возвращает название выбранного пункта меню.
-        { get_menu_step(self) } -> int
-            Возвращает расстояние между пунктами меню исходя из размеров
-            высоты меню, заданных константой {MENU_HEIGHT}, и их количества.
-        { get_menu_list(self) } -> list
-            Возвращает списо из пунктов меню.
-        { slow_mode() } -> bool
-            Возвращает {False} пока действует замедление для выбранного
-            блока кода, и {True} в момент когда код должен быть выполнен.
-        { update_snake_speed(self, end_time: float) } -> None
-            Вычесляет сколько клеток за минут пройдет змейка. И записывет
-            результат в переменную {__snake_speed}.
-        { update_eaten_apples(self) } -> None
-            При каждом вызове увеличиывет значение {__eaten_apples} на 1.
-        { update_reset_count(self) } -> None
-            При каждом вызове увеличиывет значение {__reset_count} на 1.
-        { update_snake_length(self, length: int) } -> None
-            При каждом вызове обновляет значение переменной {__snake_length}.
-        { reset_info(self) } -> None
-            Сбрасывает информаци о текущей игре.
-        { info() } -> str:
-            Выводит информацию об игре.
-    """
+    """Класс для управления общей логикой игры."""
 
     def __init__(self) -> None:
         """Инициализирует экземпляр класса
@@ -587,6 +388,23 @@ class GameManager():
 game = GameManager()
 
 
+def draw_texture_on_background() -> None:
+    """Рисует текстуру на поверхности."""
+    for i in range(0, SCREEN_WIDTH, NOISE_SIZE):
+        for j in range(0, SCREEN_HEIGHT, NOISE_SIZE):
+            rnd_rgb = [0, 0, 0]
+            for k in range(3):
+                rnd_rgb[k] = randint(
+                    BOARD_BACKGROUND_COLOR[k] - NOISE_STRENGTH,
+                    BOARD_BACKGROUND_COLOR[k] + NOISE_STRENGTH
+                )
+            pg.draw.rect(
+                background_surface,
+                (rnd_rgb[0], rnd_rgb[1], rnd_rgb[2]),
+                (i, j, NOISE_SIZE, NOISE_SIZE)
+            )
+
+
 def handle_keys(snake: Snake) -> None:
     """Отслеживает нажатые клавиши для управления змейкой."""
     keys = pg.key.get_pressed()
@@ -651,12 +469,11 @@ def quit_pressed() -> bool:
 def get_good_apples(count: int = DEFAULT_COUNT_APPLES,
                     used_cells: list = []) -> tuple[list, list]:
     """Создает список хороших яблок. И возвращает его."""
-    used_cells = used_cells
     apples = []
-    for _ in range(0, count):
+    for _ in range(count):
         apple = Apple(used_cells=used_cells)
-        apples += [apple]
-        used_cells += [apple.position]
+        apples.append(apple)
+        used_cells.append(apple.position)
 
     return apples, used_cells
 
@@ -664,12 +481,11 @@ def get_good_apples(count: int = DEFAULT_COUNT_APPLES,
 def get_stones(count: int = DEFAULT_COUNT_STONES,
                used_cells: list = []) -> tuple[list, list]:
     """Создает список камней. И возвращает его."""
-    used_cells = used_cells
     stones = []
-    for _ in range(0, count):
+    for _ in range(count):
         stone = Stone(used_cells=used_cells)
-        stones += [stone]
-        used_cells += [stone.position]
+        stones.append(stone)
+        used_cells.append(stone.position)
 
     return stones, used_cells
 
@@ -677,13 +493,11 @@ def get_stones(count: int = DEFAULT_COUNT_STONES,
 def get_bad_apples(count: int = DEFAULT_COUNT_BAD_APPLES,
                    used_cells: list = []) -> tuple[list, list]:
     """Создает список плохих яблок. И возвращает его."""
-    used_cells = used_cells
     bad_apples = []
     for _ in range(0, count):
-        bad_apple = Apple(BAD_APPLE_COLOR, used_cells)
-        bad_apple.name = 'bad_apple'
-        bad_apples += [bad_apple]
-        used_cells += [bad_apple.position]
+        bad_apple = Apple(BAD_APPLE_COLOR, used_cells, 'bad_apple')
+        bad_apples.append(bad_apple)
+        used_cells.append(bad_apple.position)
 
     return bad_apples, used_cells
 
@@ -698,13 +512,12 @@ def get_all_position(snake: Snake, obstacles: list[GameObject]) -> list:
 def init_game_obgects() -> tuple[Snake, list[GameObject]]:
     """Инициализирует все игровые объекты."""
     snake = Snake()
-    used_cells: list = [] + snake.positions
+    used_cells: list = [*snake.positions]
     good_apples, used_cells = get_good_apples(used_cells=used_cells)
     bad_apples, used_cells = get_bad_apples(used_cells=used_cells)
     stones, used_cells = get_stones(used_cells=used_cells)
-    obstacles = good_apples + bad_apples + stones
 
-    return snake, obstacles
+    return snake, [*good_apples, *bad_apples, *stones]
 
 
 def reset_game(new_game: bool = False) -> tuple[Snake, list[GameObject]]:
@@ -818,6 +631,7 @@ def draw_menu():
 
 def main():
     """Реализует базовую логику игры и инициализацию всех объектов."""
+    draw_texture_on_background()
     snake, obstacles = init_game_obgects()
     game.switch_on()
 
