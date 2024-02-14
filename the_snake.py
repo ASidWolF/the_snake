@@ -111,13 +111,12 @@ class GameObject():
         """Инициализирует новый экземпляр класса {GameObject}."""
         self.position: tuple[int, int] = MIDDLE_SCREEN
         self.body_color = body_color
-        self.name = name or str(self.__class__.__name__).lower()
+        self.name = name or str(type(self).__name__).lower()
 
     def draw(self) -> None:
         """Базовый метод рисования объектов. Определяется для
         каждого подкласса отдельно.
         """
-        pass
 
     def draw_cell(self, position: tuple[int, int],
                   color: Optional[tuple[int, int, int]] = None,
@@ -173,16 +172,14 @@ class Stone(GameObject):
 
     def get_trace(self, direction: tuple[int, int]) -> list[tuple[int, int]]:
         """Возвращает след по которому пролетит камень."""
-        trace: list[tuple[int, int]] = []
-        pos = self.position
+        pos_x, pos_y = self.position
         length = self.weight
-        step = (GRID_SIZE * direction[0], GRID_SIZE * direction[1])
-        trace = [
-            (pos[0] + step[0] * x, pos[1] + step[1] * x)
-            for x in range(length)
-        ]
+        new_x, new_y = (GRID_SIZE * direction[0], GRID_SIZE * direction[1])
 
-        return trace
+        return [
+            (pos_x + new_x * step, pos_y + new_y * step)
+            for step in range(length)
+        ]
 
     def move(self, new_position: tuple[int, int]) -> None:
         """Сдивгает камень в новую позицию."""
@@ -202,7 +199,7 @@ class Snake(GameObject):
     def reset(self) -> None:
         """Сбрасывает змейку в начальное состояние."""
         self.positions = [self.position]
-        self.length: int = 1
+        self.length = 1
         self.last: Optional[tuple[int, int]] = None
         self.direction = choice([RIGHT, LEFT, UP, DOWN])
 
@@ -212,10 +209,10 @@ class Snake(GameObject):
 
     def new_head(self) -> tuple[int, int]:
         """Возвращает координаты новой головы."""
-        x_pos, y_pos = self.get_head_position()
+        pos_x, pos_y = self.get_head_position()
         return (
-            (x_pos + self.direction[0] * GRID_SIZE) % SCREEN_WIDTH,
-            (y_pos + self.direction[1] * GRID_SIZE) % SCREEN_HEIGHT
+            (pos_x + self.direction[0] * GRID_SIZE) % SCREEN_WIDTH,
+            (pos_y + self.direction[1] * GRID_SIZE) % SCREEN_HEIGHT
         )
 
     def grow_up(self, new_segment: tuple[int, int]) -> None:
@@ -390,18 +387,15 @@ game = GameManager()
 
 def draw_texture_on_background() -> None:
     """Рисует текстуру на поверхности."""
-    for i in range(0, SCREEN_WIDTH, NOISE_SIZE):
-        for j in range(0, SCREEN_HEIGHT, NOISE_SIZE):
-            rnd_rgb = [0, 0, 0]
-            for k in range(3):
-                rnd_rgb[k] = randint(
-                    BOARD_BACKGROUND_COLOR[k] - NOISE_STRENGTH,
-                    BOARD_BACKGROUND_COLOR[k] + NOISE_STRENGTH
-                )
+    color = BOARD_BACKGROUND_COLOR
+    noise = NOISE_STRENGTH
+    for pos_x in range(0, SCREEN_WIDTH, NOISE_SIZE):
+        for pos_y in range(0, SCREEN_HEIGHT, NOISE_SIZE):
             pg.draw.rect(
                 background_surface,
-                (rnd_rgb[0], rnd_rgb[1], rnd_rgb[2]),
-                (i, j, NOISE_SIZE, NOISE_SIZE)
+                [randint(color[index] - noise, color[index] + noise)
+                 for index in range(3)],
+                (pos_x, pos_y, NOISE_SIZE, NOISE_SIZE)
             )
 
 
@@ -512,7 +506,7 @@ def get_all_position(snake: Snake, obstacles: list[GameObject]) -> list:
 def init_game_obgects() -> tuple[Snake, list[GameObject]]:
     """Инициализирует все игровые объекты."""
     snake = Snake()
-    used_cells: list = [*snake.positions]
+    used_cells = list.copy(snake.positions)
     good_apples, used_cells = get_good_apples(used_cells=used_cells)
     bad_apples, used_cells = get_bad_apples(used_cells=used_cells)
     stones, used_cells = get_stones(used_cells=used_cells)
