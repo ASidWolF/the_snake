@@ -279,6 +279,7 @@ class GameManager():
         self.__menu_sections: list = [
             'Новая игра',
             'Продолжить',
+            'Рейтинги',
             'Выход'
         ]
 
@@ -379,6 +380,10 @@ class GameManager():
             f'Скорость {self.__snake_speed} клеток в минуту!'
         )
         return info
+
+    def over(self) -> None:
+        """Реализует логику при проигрыше"""
+        pass
 
 
 """Инициализируем {GameManager} для возможнисти управлять всей логикой."""
